@@ -16,10 +16,10 @@
 - 位置与方向（东南西北、左转右转）
 - 简单统计（合计、比较、相差）
 
-每关开始有 3 秒倒计时。答错的题会在本关结束前回炉再练一次，并进入错题本。每日一练会先抽出错题。进度、打卡存在浏览器本地，没有账号。
+答错会标出考点（进位、退位、余数、倍差等），加减题弹出竖式。错题本先重做原题，再出同类新题。学情按技能统计薄弱点，给出「今晚练什么」。口算冲刺 90 秒，只跟自己的最好成绩比。题目可点喇叭朗读。进度只存在这台设备，没有账号、没有广告、不拿孩子跟别人比。
 
 ## 源码
 
 `src/components/math` 界面，`src/lib/math` 出题与判分，`src/store/math.ts` 存档。
 
-姐妹项目：[拂尘](https://github.com/xuanske/fuchen) · [筹算](https://github.com/xuanske/chousuan)
+姊妹项目：[拂尘](https://github.com/xuanske/fuchen) · [筹算](https://github.com/xuanske/chousuan)

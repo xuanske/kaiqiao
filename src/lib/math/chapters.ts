@@ -4,6 +4,9 @@ export const LEVELS_PER_CHAPTER = 8;
 export const QUESTIONS_PER_LEVEL = 8;
 export const DAILY_COUNT = 10;
 export const DUEL_SECONDS = 60;
+export const SPRINT_SECONDS = 90;
+export const SPRINT_COUNT = 20;
+export const DRILL_COUNT = 8;
 
 export const CHAPTERS: Chapter[] = [
   { id: "warmup", name: "口算热身", blurb: "百以内加减，表内乘除", term: "准备" },

@@ -1,0 +1,55 @@
+export type InputMode = "choice" | "keypad";
+export type KeypadKind = "int" | "remainder" | "dec";
+
+export type Question = {
+  id: string;
+  chapterId: string;
+  prompt: string;
+  explain: string;
+  answer: string;
+  mode: InputMode;
+  choices?: string[];
+  keypad?: KeypadKind;
+  trap?: string;
+  skill?: string;
+  fromWrong?: boolean;
+};
+
+export type Chapter = {
+  id: string;
+  name: string;
+  blurb: string;
+  term: string;
+};
+
+export type WrongItem = {
+  prompt: string;
+  answer: string;
+  explain: string;
+  chapterId: string;
+  given: string;
+  at: number;
+  trap?: string;
+  skill?: string;
+  mode?: InputMode;
+  choices?: string[];
+  keypad?: KeypadKind;
+};
+
+export type AnswerLog = {
+  prompt: string;
+  given: string;
+  ok: boolean;
+  ms: number;
+  skill?: string;
+};
+
+export type SkillStat = {
+  seen: number;
+  correct: number;
+  sumMs: number;
+};
+
+export type PlayKind = "campaign" | "daily" | "review" | "duel" | "sprint" | "drill";
+
+export type Screen = "home" | "map" | "play" | "result" | "review" | "duel" | "report";
