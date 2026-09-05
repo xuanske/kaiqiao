@@ -1,0 +1,9 @@
+{
+  "name": "开窍",
+  "short_name": "开窍",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#eef3ea",
+  "theme_color": "#3d6b45",
+  "lang": "zh-CN"
+}

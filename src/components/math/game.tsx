@@ -812,6 +812,29 @@ function Report() {
         <p className="mt-1 text-sm leading-relaxed">{plan.line}</p>
         {sprintBest ? <p className="mt-1 text-xs text-muted-foreground">口算冲刺最好 {sprintBest} 题</p> : null}
         {pace ? <p className="mt-1 text-xs text-muted-foreground">{pace.line}</p> : null}
+        <button
+          type="button"
+          className="mt-3 text-xs text-muted-foreground underline-offset-2 hover:underline"
+          onClick={() => {
+            const lines = [
+              "开窍学情",
+              `累计 ${stats.answered} 题，正确率 ${acc}%`,
+              `打卡 ${streak} 天`,
+              plan.line,
+              ...weak.slice(0, 4).map((row) => `${row.label} ${Math.round(row.acc * 100)}% · ${row.seen} 题`),
+              "只跟自己比，不排名。",
+            ];
+            const blob = new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "开窍-学情.txt";
+            a.click();
+            URL.revokeObjectURL(url);
+          }}
+        >
+          导出学情
+        </button>
         <div className="mt-3 flex gap-2">
           {plan.skill ? (
             <Button className="flex-1 rounded-2xl" onClick={() => startDrill(plan.skill)}>

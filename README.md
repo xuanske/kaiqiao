@@ -44,3 +44,13 @@ git clone https://ghproxy.net/https://github.com/xuanske/kaiqiao.git
 `src/components/math` 界面，`src/lib/math` 出题与判分，`src/store/math.ts` 存档。
 
 姊妹项目：[拂尘](https://github.com/xuanske/fuchen) · [筹算](https://github.com/xuanske/chousuan)
+
+## 和同类不同
+
+小猿口算已经做成大而全的作业 App。开窍只做三年级计算，而且不拿孩子跟别人比。
+
+- 答错标考点，加减弹出竖式
+- 错题本先重做原题，再出同类
+- 学情可导出，没有排行榜、没有广告
+- 不做假 OCR、不假装能拍整页作业
+
