@@ -1,0 +1,40 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@theme {
+  --font-sans: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
+  --font-display: "Songti SC", "STSong", "Noto Serif SC", serif;
+  --color-background: #eef3ea;
+  --color-foreground: #243026;
+  --color-card: #f7faf5;
+  --color-card-foreground: #243026;
+  --color-primary: #3d6b45;
+  --color-primary-foreground: #f7faf5;
+  --color-secondary: #e0eade;
+  --color-secondary-foreground: #243026;
+  --color-muted: #e0eade;
+  --color-muted-foreground: #667066;
+  --color-accent: #3d6b45;
+  --color-accent-foreground: #f7faf5;
+  --color-destructive: #b4554a;
+  --color-destructive-foreground: #243026;
+  --color-border: #c9d4c4;
+  --color-input: #c9d4c4;
+  --color-ring: #3d6b45;
+  --color-ok: #3d6b45;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius: 12px;
+  --shadow-border: 0 0 0 1px var(--color-border);
+}
+
+@layer base {
+  html { -webkit-font-smoothing: antialiased; }
+  body { background: var(--color-background); color: var(--color-foreground); font-family: var(--font-sans); margin: 0; }
+  h1, h2, h3 { font-family: var(--font-display); }
+  button:not(:disabled), [role="button"]:not(:disabled) { cursor: pointer; }
+}
+
+.stagger-in { animation: rise 420ms ease both; }
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }

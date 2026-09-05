@@ -2,6 +2,27 @@
 
 小学三年级数学闯关小游戏（网页版）。
 
+## 怎么用
+
+需要 [Node.js 20](https://nodejs.org/) 或以上。
+
+```bash
+git clone https://github.com/xuanske/kaiqiao.git
+cd kaiqiao
+npm install
+npm run dev
+```
+
+终端会给出本地地址，用浏览器打开即可玩。进度存在这台设备，没有账号。
+
+国内克隆：
+
+```bash
+git clone https://ghproxy.net/https://github.com/xuanske/kaiqiao.git
+```
+
+小学三年级数学闯关小游戏（网页版）。
+
 微信小程序/小游戏的工具链没法在这个预览里跑，所以做成可点可玩的网页，竖屏、闯关、口算键盘、闪电对决。题型按三年级上/下册：
 
 - 口算热身（百以内加减、表内乘除）

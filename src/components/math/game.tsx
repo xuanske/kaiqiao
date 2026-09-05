@@ -1,5 +1,4 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { Link } from "@tanstack/react-router";
 import {
   BarChart3,
   BookOpen,
@@ -94,9 +93,7 @@ function Home() {
   return (
     <div className="flex flex-1 flex-col">
       <header className="flex items-center justify-between">
-        <Link to="/studio" className="text-xs text-muted-foreground">
-          工作室
-        </Link>
+        <div className="font-display text-sm tracking-widest">开窍</div>
         <button
           type="button"
           className="flex size-10 items-center justify-center rounded-full text-muted-foreground"
