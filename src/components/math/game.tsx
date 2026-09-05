@@ -14,9 +14,11 @@ import { ColumnMath } from "@/components/math/column";
 import {
   CHAPTERS,
   DUEL_SECONDS,
+  GRADE_LABEL,
   LEVELS_PER_CHAPTER,
   SPRINT_SECONDS,
   chapterById,
+  chaptersOfGrade,
 } from "@/lib/math/chapters";
 import { parseColumn } from "@/lib/math/column";
 import { unlockAudio, playBad, playCombo, playOk, playTap, playWin } from "@/lib/math/audio";
@@ -107,7 +109,7 @@ function Home() {
       <div className="mt-6 kai-rise">
         <Mascot mood="idle" />
         <h1 className="mt-3 text-center font-display text-4xl tracking-tight">开窍</h1>
-        <p className="mt-1 text-center text-sm text-muted-foreground">错了讲清为什么，再出同类题</p>
+        <p className="mt-1 text-center text-sm text-muted-foreground">小学一到六年级。错了讲清为什么，再出同类题</p>
       </div>
 
       <div className="mt-6 grid grid-cols-3 gap-2">
@@ -224,9 +226,13 @@ function Map() {
     <div className="flex flex-1 flex-col">
       <Back onClick={() => go("home")} label="开窍" />
       <h2 className="font-display text-2xl tracking-tight">闯关地图</h2>
-      <p className="mt-1 text-sm text-muted-foreground">过三关再开下一章。每关八题。</p>
+      <p className="mt-1 text-sm text-muted-foreground">每个年级单独开。过三关再开下一章。每关八题。</p>
       <ol className="mt-4 flex flex-col gap-3 pb-4">
-        {CHAPTERS.map((chapter, index) => {
+        {([1, 2, 3, 4, 5, 6] as const).map((grade) => (
+          <li key={grade}>
+            <div className="mb-2 text-xs tracking-widest text-muted-foreground">{GRADE_LABEL[grade]}</div>
+            <ul className="flex flex-col gap-3">
+        {chaptersOfGrade(grade).map((chapter, index) => {
           const open = isChapterUnlocked(stars, chapter.id);
           const sum = chapterStarSum(stars, chapter.id);
           const done = clearedLevels(stars, chapter.id);
@@ -281,6 +287,9 @@ function Map() {
             </li>
           );
         })}
+            </ul>
+          </li>
+        ))}
       </ol>
     </div>
   );

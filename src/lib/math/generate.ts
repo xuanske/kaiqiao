@@ -1,4 +1,5 @@
 import { CHAPTERS } from "./chapters.ts";
+import { GRADE_FACTORY } from "./grades.ts";
 import { inferSkill } from "./skills.ts";
 import { randomRng, type Rng } from "./rng.ts";
 import type { KeypadKind, Question, WrongItem } from "./types.ts";
@@ -589,6 +590,7 @@ const FACTORY: Record<string, (level: number, rng: Rng) => Question> = {
   frac,
   dir: dirQ,
   stat: statQ,
+  ...GRADE_FACTORY,
 };
 
 export function tagQuestion(q: Question): Question {

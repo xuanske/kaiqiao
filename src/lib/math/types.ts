@@ -20,6 +20,7 @@ export type Chapter = {
   name: string;
   blurb: string;
   term: string;
+  grade: 1 | 2 | 3 | 4 | 5 | 6;
 };
 
 export type WrongItem = {

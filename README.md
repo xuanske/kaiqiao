@@ -2,6 +2,12 @@
 
 小学三年级数学闯关小游戏（网页版）。
 
+## 直接打开（国内）
+
+浏览器打开：[https://cdn.jsdelivr.net/gh/xuanske/kaiqiao@main/docs/index.html](https://cdn.jsdelivr.net/gh/xuanske/kaiqiao@main/docs/index.html)
+
+打不开就下载 Releases 里的 zip，解压后打开 `index.html`。
+
 ## 怎么用
 
 需要 [Node.js 20](https://nodejs.org/) 或以上。

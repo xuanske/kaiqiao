@@ -1,0 +1,10 @@
+打开即用
+
+1. 解压这个文件夹。
+2. 用 Chrome 或 Edge 双击打开 index.html。
+
+玄鉴、开窍：断网也能用。
+拂尘：选电脑文件夹时，若浏览器不允许，请在本机安装 Node 20 后运行 npm install && npm run dev。
+筹算：无网时用样本行情；有网且国内时走东方财富。
+
+源码 https://github.com/xuanske

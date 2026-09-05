@@ -25,9 +25,12 @@ export function clearedLevels(stars: Record<string, number>, chapterId: string):
 }
 
 export function isChapterUnlocked(stars: Record<string, number>, chapterId: string): boolean {
-  const index = CHAPTERS.findIndex((c) => c.id === chapterId);
+  const chapter = CHAPTERS.find((c) => c.id === chapterId);
+  if (!chapter) return true;
+  const same = CHAPTERS.filter((c) => c.grade === chapter.grade);
+  const index = same.findIndex((c) => c.id === chapterId);
   if (index <= 0) return true;
-  const prev = CHAPTERS[index - 1];
+  const prev = same[index - 1];
   if (!prev) return true;
   return clearedLevels(stars, prev.id) >= 3;
 }
@@ -43,11 +46,18 @@ export function isLevelUnlocked(
 }
 
 export function nextCampaign(stars: Record<string, number>): { chapterId: string; level: number } {
-  for (const chapter of CHAPTERS) {
-    if (!isChapterUnlocked(stars, chapter.id)) continue;
-    for (let level = 1; level <= LEVELS_PER_CHAPTER; level += 1) {
-      if ((stars[starKey(chapter.id, level)] ?? 0) < 1 && isLevelUnlocked(stars, chapter.id, level)) {
-        return { chapterId: chapter.id, level };
+  const passes: Array<(c: (typeof CHAPTERS)[number]) => boolean> = [
+    (c) => chapterStarSum(stars, c.id) > 0,
+    () => true,
+  ];
+  for (const pred of passes) {
+    for (const chapter of CHAPTERS) {
+      if (!pred(chapter)) continue;
+      if (!isChapterUnlocked(stars, chapter.id)) continue;
+      for (let level = 1; level <= LEVELS_PER_CHAPTER; level += 1) {
+        if ((stars[starKey(chapter.id, level)] ?? 0) < 1 && isLevelUnlocked(stars, chapter.id, level)) {
+          return { chapterId: chapter.id, level };
+        }
       }
     }
   }

@@ -18,7 +18,11 @@ export type SkillId =
   | "frac"
   | "dec"
   | "dir"
-  | "stat";
+  | "stat"
+  | "eq"
+  | "pct"
+  | "ratio"
+  | "circle";
 
 export const SKILL_LABEL: Record<SkillId, string> = {
   add: "加法",
@@ -38,6 +42,10 @@ export const SKILL_LABEL: Record<SkillId, string> = {
   dec: "小数",
   dir: "位置方向",
   stat: "简单统计",
+  eq: "简易方程",
+  pct: "百分数",
+  ratio: "比和比例",
+  circle: "圆的周长",
 };
 
 export const SKILL_HINT: Record<SkillId, string> = {
@@ -58,6 +66,10 @@ export const SKILL_HINT: Record<SkillId, string> = {
   dec: "小数点对齐再加减。1 元 = 10 角。",
   dir: "面朝一个方向，右转顺时针一格。",
   stat: "一共用加法，相差用减法。",
+  eq: "把已知数移到另一边，未知数单独留一边。",
+  pct: "百分数就是分母是 100 的分数。",
+  ratio: "比的前项后项同乘同除一个数，比值不变。",
+  circle: "周长 = π × 直径。这里 π 取 3。",
 };
 
 export const SKILL_DRILL: Record<SkillId, { chapterId: string; level: number }> = {
@@ -78,6 +90,10 @@ export const SKILL_DRILL: Record<SkillId, { chapterId: string; level: number }> 
   dec: { chapterId: "frac", level: 7 },
   dir: { chapterId: "dir", level: 3 },
   stat: { chapterId: "stat", level: 4 },
+  eq: { chapterId: "g5eq", level: 3 },
+  pct: { chapterId: "g5pct", level: 3 },
+  ratio: { chapterId: "g6ratio", level: 3 },
+  circle: { chapterId: "g6circle", level: 3 },
 };
 
 const SKILL_IDS = Object.keys(SKILL_LABEL) as SkillId[];
@@ -133,6 +149,27 @@ export function inferSkill(q: Pick<Question, "chapterId" | "prompt" | "answer" |
       return "dir";
     case "stat":
       return "stat";
+    case "g1add":
+    case "g2add":
+      return prompt.includes("−") ? "sub" : "add";
+    case "g1clock":
+      return "time";
+    case "g2times":
+      return "times";
+    case "g4ops":
+      return prompt.includes("÷") ? "div" : "mul";
+    case "g4dec":
+      return "dec";
+    case "g5frac":
+      return "frac";
+    case "g5eq":
+      return "eq";
+    case "g5pct":
+      return "pct";
+    case "g6ratio":
+      return "ratio";
+    case "g6circle":
+      return "circle";
     case "wan":
       return prompt.includes("−") ? "sub" : "add";
     default:
