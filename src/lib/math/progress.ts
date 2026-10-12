@@ -1,4 +1,5 @@
 import { CHAPTERS, LEVELS_PER_CHAPTER } from "./chapters.ts";
+import type { Grade } from "./types.ts";
 
 export function starKey(chapterId: string, level: number): string {
   return `${chapterId}:${level}`;
@@ -26,7 +27,7 @@ export function clearedLevels(stars: Record<string, number>, chapterId: string):
 
 export function isChapterUnlocked(stars: Record<string, number>, chapterId: string): boolean {
   const chapter = CHAPTERS.find((c) => c.id === chapterId);
-  if (!chapter) return true;
+  if (!chapter) return false;
   const same = CHAPTERS.filter((c) => c.grade === chapter.grade);
   const index = same.findIndex((c) => c.id === chapterId);
   if (index <= 0) return true;
@@ -40,18 +41,20 @@ export function isLevelUnlocked(
   chapterId: string,
   level: number,
 ): boolean {
+  if (!Number.isInteger(level) || level < 1 || level > LEVELS_PER_CHAPTER) return false;
   if (!isChapterUnlocked(stars, chapterId)) return false;
   if (level <= 1) return true;
   return (stars[starKey(chapterId, level - 1)] ?? 0) >= 1;
 }
 
-export function nextCampaign(stars: Record<string, number>): { chapterId: string; level: number } {
+export function nextCampaign(stars: Record<string, number>, grade?: Grade): { chapterId: string; level: number } {
+  const chapters = CHAPTERS.filter((c) => grade === undefined || c.grade === grade);
   const passes: Array<(c: (typeof CHAPTERS)[number]) => boolean> = [
     (c) => chapterStarSum(stars, c.id) > 0,
     () => true,
   ];
   for (const pred of passes) {
-    for (const chapter of CHAPTERS) {
+    for (const chapter of chapters) {
       if (!pred(chapter)) continue;
       if (!isChapterUnlocked(stars, chapter.id)) continue;
       for (let level = 1; level <= LEVELS_PER_CHAPTER; level += 1) {
@@ -61,11 +64,15 @@ export function nextCampaign(stars: Record<string, number>): { chapterId: string
       }
     }
   }
-  return { chapterId: CHAPTERS[0]!.id, level: 1 };
+  return { chapterId: chapters[0]!.id, level: 1 };
 }
 
-export function unlockedChapterIds(stars: Record<string, number>): string[] {
-  return CHAPTERS.filter((c) => isChapterUnlocked(stars, c.id)).map((c) => c.id);
+export function unlockedChapterIds(stars: Record<string, number>, grade?: Grade): string[] {
+  return CHAPTERS.filter((c) => (grade === undefined || c.grade === grade) && isChapterUnlocked(stars, c.id)).map((c) => c.id);
+}
+
+export function currentStreak(streak: number, lastPlayDate: string, today = todayStamp()): number {
+  return lastPlayDate === today || lastPlayDate === shiftStamp(today, -1) ? streak : 0;
 }
 
 export function todayStamp(now = new Date()): string {

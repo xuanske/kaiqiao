@@ -9,8 +9,10 @@ createRoot(document.getElementById("root")!).render(
   </StrictMode>,
 );
 
-if ("serviceWorker" in navigator) {
+if (import.meta.env.PROD && location.protocol !== "file:" && "serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    void navigator.serviceWorker.register("/sw.js");
+    void navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => {
+      // The page and explicit offline file remain usable without a worker.
+    });
   });
 }

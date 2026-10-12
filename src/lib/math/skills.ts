@@ -61,7 +61,7 @@ export const SKILL_HINT: Record<SkillId, string> = {
   peri: "长方形周长 =（长 + 宽）× 2，正方形 × 4。",
   area: "面积是长 × 宽，单位是平方。",
   time: "1 时 = 60 分。跨天先算到午夜。",
-  calendar: "平年 365，闰年二月 29。四年一闰。",
+  calendar: "平年 365，闰年二月 29。整百年份还要能被 400 整除。",
   frac: "平均分成几份，每份就是几分之一。",
   dec: "小数点对齐再加减。1 元 = 10 角。",
   dir: "面朝一个方向，右转顺时针一格。",
@@ -104,6 +104,8 @@ export function isSkillId(value: string | undefined): value is SkillId {
 
 export function inferSkill(q: Pick<Question, "chapterId" | "prompt" | "answer" | "trap">): SkillId {
   const { chapterId, prompt, answer, trap } = q;
+  if (chapterId === "g4dec") return "dec";
+  if (chapterId === "g5frac") return "frac";
   if (trap?.includes("跨天")) return "time";
   if (trap?.includes("多多少") || (chapterId === "bei" && prompt.includes("多多少"))) return "bei";
   if (trap?.includes("连续进位")) return "add-carry";
@@ -228,6 +230,9 @@ export function tonightPlan(map: Record<string, SkillStat>, wrong: WrongItem[]):
   line: string;
   skill?: SkillId;
 } {
+  if (!Object.values(map).some((s) => s.seen > 0) && !wrong.length) {
+    return { line: "还没有练习记录。先选年级，完成一组每日练习，再看需要巩固的地方。" };
+  }
   const weak = weakSkills(map, 3);
   if (weak[0]) {
     const top = weak[0];
@@ -241,7 +246,7 @@ export function tonightPlan(map: Record<string, SkillStat>, wrong: WrongItem[]):
     const label = skill ? SKILL_LABEL[skill] : "错题";
     return { skill, line: `错题本还有 ${wrong.length} 道。先回炉 ${label}。` };
   }
-  return { line: "各章都还稳。今晚做一组口算冲刺，把速度练出来。" };
+  return { line: "目前记录未见明显薄弱项。可以练一组本年级题目，继续积累记录。" };
 }
 
 export function oralPace(map: Record<string, SkillStat>): { avgMs: number; line: string } | null {

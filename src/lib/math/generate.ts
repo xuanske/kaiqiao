@@ -622,7 +622,11 @@ export function makeMixedSet(chapterIds: string[], n: number, rng: Rng = randomR
 }
 
 export function makeSimilar(item: Pick<WrongItem, "chapterId" | "skill">, rng: Rng = randomRng()): Question {
-  return makeQuestion(item.chapterId, rng.int(3, 6), rng);
+  let q = makeQuestion(item.chapterId, rng.int(3, 6), rng);
+  for (let attempt = 0; item.skill && q.skill !== item.skill && attempt < 40; attempt++) {
+    q = makeQuestion(item.chapterId, rng.int(1, 8), rng);
+  }
+  return q;
 }
 
 export function wrongToQuestion(item: WrongItem): Question | null {
@@ -657,7 +661,7 @@ export function makeReviewSet(wrong: WrongItem[], rng: Rng = randomRng()): Quest
     if (!out.some((e) => e.prompt === q.prompt)) out.push(q);
     if (out.length >= 10) break;
   }
-  if (out.length < 6) out.push(...makeMixedSet(["warmup"], 6 - out.length, rng));
+  if (out.length < 6) out.push(...makeMixedSet([...new Set(wrong.map((w) => w.chapterId))], 6 - out.length, rng));
   return out;
 }
 
@@ -674,8 +678,8 @@ export function makeDailySet(
   const review = wrong.slice(0, reviewN).map((w) => makeSimilar(w, rng));
   const remain = Math.max(0, n - review.length);
   const speedN = Math.min(5, remain);
-  const speedIds = chapterIds.filter((id) => id === "warmup" || id === "wan");
-  const speedPool = speedIds.length ? speedIds : ["warmup"];
+  const speedIds = chapterIds.filter((id) => ["warmup", "wan", "g1add", "g2add", "g2times", "g4ops", "g4dec", "g5eq", "g6ratio"].includes(id));
+  const speedPool = speedIds.length ? speedIds : chapterIds.length ? chapterIds : ["warmup"];
   const speed = Array.from({ length: speedN }, (_, i) =>
     makeQuestion(speedPool[i % speedPool.length] ?? "warmup", rng.int(lo, Math.max(lo, hi - 2)), rng),
   );

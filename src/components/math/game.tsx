@@ -36,12 +36,17 @@ import { hushSpeak, speakPrompt } from "@/lib/math/speak";
 import { cn } from "@/lib/utils";
 import { useMath } from "@/store/math";
 import { Keypad } from "./keypad";
+import { Backup } from "./backup";
+import { downloadText } from "@/lib/download";
+import type { Grade } from "@/lib/math/types";
+import { currentStreak, todayStamp } from "@/lib/math/progress";
 import { Mascot, type Mood } from "./mascot";
 
 export function Game() {
   const screen = useMath((s) => s.screen);
   const hydrate = useMath((s) => s.hydrate);
   const persist = useMath((s) => s.persist);
+  const storageError = useMath((s) => s.storageError);
 
   useEffect(() => {
     hydrate();
@@ -60,6 +65,7 @@ export function Game() {
   return (
     <div className="flex min-h-dvh justify-center bg-background text-foreground">
       <div className="flex min-h-dvh w-full max-w-sm flex-col px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))]">
+        {storageError ? <p role="alert" className="mb-3 rounded-xl border border-destructive p-3 text-sm">{storageError}</p> : null}
         {screen === "home" ? <Home /> : null}
         {screen === "map" ? <Map /> : null}
         {screen === "play" ? <Play /> : null}
@@ -74,18 +80,19 @@ export function Game() {
 
 function Home() {
   const stars = useMath((s) => s.stars);
-  const streak = useMath((s) => s.streak);
+  const streak = useMath((s) => currentStreak(s.streak, s.lastPlayDate));
   const xp = useMath((s) => s.xp);
   const muted = useMath((s) => s.muted);
   const setMuted = useMath((s) => s.setMuted);
   const go = useMath((s) => s.go);
   const startDaily = useMath((s) => s.startDaily);
   const startDuel = useMath((s) => s.startDuel);
-  const startReview = useMath((s) => s.startReview);
   const startSprint = useMath((s) => s.startSprint);
   const wrong = useMath((s) => s.wrong);
-  const next = nextCampaign(stars);
-  const hasProgress = totalStars(stars) > 0;
+  const selectedGrade = useMath((s) => s.selectedGrade);
+  const next = nextCampaign(stars, selectedGrade);
+  const hasProgress = chaptersOfGrade(selectedGrade).some((c) => chapterStarSum(stars, c.id) > 0);
+  const dailyDone = useMath((s) => s.dailyByGrade[s.selectedGrade] === todayStamp());
 
   const tap = () => {
     unlockAudio();
@@ -109,10 +116,11 @@ function Home() {
       <div className="mt-6 kai-rise">
         <Mascot mood="idle" />
         <h1 className="mt-3 text-center font-display text-4xl tracking-tight">开窍</h1>
-        <p className="mt-1 text-center text-sm text-muted-foreground">小学一到六年级。错了讲清为什么，再出同类题</p>
+        <p className="mt-1 text-center text-sm text-muted-foreground">小学一到六年级。每天练一组，错题慢慢讲清楚</p>
       </div>
 
-      <div className="mt-6 grid grid-cols-3 gap-2">
+      <GradePicker />
+      <div className="mt-4 grid grid-cols-3 gap-2">
         <Stat label="打卡" value={`${streak} 天`} />
         <Stat label="星" value={String(totalStars(stars))} />
         <Stat label="悟性" value={String(xp)} />
@@ -139,7 +147,7 @@ function Home() {
             }}
           >
             <Timer className="size-4" />
-            冲刺
+            限时
           </Button>
           <Button
             variant="secondary"
@@ -149,7 +157,7 @@ function Home() {
               startDaily();
             }}
           >
-            每日
+            {dailyDone ? "今日已练 ✓" : "每日 10 题"}
           </Button>
           <Button
             variant="secondary"
@@ -169,12 +177,11 @@ function Home() {
             className="rounded-2xl text-muted-foreground"
             onClick={() => {
               tap();
-              if (wrong.length) startReview();
-              else go("review");
+              go("review");
             }}
           >
             <BookOpen className="size-4" />
-            错题 {wrong.length ? wrong.length : ""}
+            错题 {wrong.filter((w) => chapterById(w.chapterId).grade === selectedGrade).length || ""}
           </Button>
           <Button
             variant="ghost"
@@ -220,15 +227,16 @@ function Map() {
   const go = useMath((s) => s.go);
   const startLevel = useMath((s) => s.startLevel);
   const muted = useMath((s) => s.muted);
-  const next = nextCampaign(stars);
+  const selectedGrade = useMath((s) => s.selectedGrade);
+  const next = nextCampaign(stars, selectedGrade);
 
   return (
     <div className="flex flex-1 flex-col">
       <Back onClick={() => go("home")} label="开窍" />
       <h2 className="font-display text-2xl tracking-tight">闯关地图</h2>
-      <p className="mt-1 text-sm text-muted-foreground">每个年级单独开。过三关再开下一章。每关八题。</p>
+      <p className="mt-1 text-sm text-muted-foreground">{GRADE_LABEL[selectedGrade]} · 过三关解锁下一章，每关八题。</p>
       <ol className="mt-4 flex flex-col gap-3 pb-4">
-        {([1, 2, 3, 4, 5, 6] as const).map((grade) => (
+        {([selectedGrade]).map((grade) => (
           <li key={grade}>
             <div className="mb-2 text-xs tracking-widest text-muted-foreground">{GRADE_LABEL[grade]}</div>
             <ul className="flex flex-col gap-3">
@@ -298,7 +306,7 @@ function Map() {
 function playTitle(kind: string, chapterId?: string, level?: number, skill?: string): string {
   if (kind === "daily") return "每日一练";
   if (kind === "review") return "错题回炉";
-  if (kind === "sprint") return "口算冲刺";
+  if (kind === "sprint") return "本年级限时练习";
   if (kind === "drill") return skill && isSkillId(skill) ? `对症 · ${SKILL_LABEL[skill]}` : "对症练";
   return `${chapterById(chapterId ?? "warmup").name} · ${level ?? 1} 关`;
 }
@@ -342,18 +350,18 @@ function Play() {
   }, [session?.index, session?.questions]);
 
   useEffect(() => {
-    if (!feedback) return;
+    if (!feedback || !isSprint) return;
     const wait = feedback.ok ? 900 : 2200;
     const t = window.setTimeout(() => advance(), wait);
     return () => window.clearTimeout(t);
-  }, [feedback, advance]);
+  }, [feedback, advance, isSprint]);
 
   useEffect(() => {
     if (!isSprint) return;
     let raf = 0;
     let last = performance.now();
     const loop = (t: number) => {
-      const dt = Math.min(0.1, (t - last) / 1000);
+      const dt = Math.max(0, (t - last) / 1000);
       last = t;
       tickSprint(dt);
       raf = requestAnimationFrame(loop);
@@ -393,7 +401,9 @@ function Play() {
     <AskShell
       mood={mood}
       title={playTitle(session.kind, session.chapterId, session.level, session.skill)}
-      onBack={() => (session.kind === "sprint" || session.kind === "drill" || session.kind === "daily" ? go("home") : go("map"))}
+      onBack={() => {
+        if (window.confirm("结束本轮？已提交的答案会保留，未完成的练习不计通关或打卡。")) go("home");
+      }}
       progress={isSprint ? `${remain}s` : `${session.index + 1} / ${total}`}
       combo={session.combo}
       qPrompt={q.prompt}
@@ -468,7 +478,7 @@ function Duel() {
     let raf = 0;
     let last = performance.now();
     const loop = (t: number) => {
-      const dt = Math.min(0.1, (t - last) / 1000);
+      const dt = Math.max(0, (t - last) / 1000);
       last = t;
       tickDuel(dt);
       raf = requestAnimationFrame(loop);
@@ -506,8 +516,8 @@ function Duel() {
   return (
     <AskShell
       mood={feedback ? (feedback.ok ? "happy" : "sad") : "think"}
-      title="闪电对决"
-      onBack={() => go("home")}
+      title="和电脑练一练"
+      onBack={() => { if (window.confirm("结束本轮对决？已提交的答案会保留。")) go("home"); }}
       progress={`${remain}s`}
       combo={session.combo}
       qPrompt={q.prompt}
@@ -522,7 +532,7 @@ function Duel() {
             <div className="font-display text-xl tabular-nums">{you}</div>
           </div>
           <div className="rounded-xl bg-secondary px-3 py-2 text-right">
-            <div className="text-xs text-muted-foreground">窍窍</div>
+            <div className="text-xs text-muted-foreground">窍窍（电脑）</div>
             <div className="font-display text-xl tabular-nums">{duel.npcScore}</div>
           </div>
         </div>
@@ -639,8 +649,8 @@ function AskShell({
           <p className="mt-2 text-xs text-lantern">上次错过的原题</p>
         ) : null}
         {feedback ? (
-          <div className="mt-3">
-            <button type="button" onClick={onSkip} className="w-full text-left">
+          <div className="mt-3" aria-live="polite">
+            <div>
               <p className={cn("text-sm font-medium", feedback.ok ? "text-ok" : "text-destructive")}>
                 {feedback.ok ? "答对了" : `正确答案 ${answer}`}
               </p>
@@ -650,8 +660,9 @@ function AskShell({
               {skillLabel && !feedback.ok ? (
                 <p className="mt-1 text-xs text-card-foreground/50">考点 · {skillLabel}</p>
               ) : null}
-            </button>
+            </div>
             {work ? <ColumnMath work={work} wrong /> : null}
+            <Button className="mt-3 w-full rounded-xl" onClick={onSkip}>{feedback.ok ? "下一题" : "看懂了，继续"}</Button>
           </div>
         ) : null}
       </div>
@@ -678,6 +689,8 @@ function Result() {
     if (!muted) playWin();
   }, [muted]);
 
+  const selectedGrade = useMath((s) => s.selectedGrade);
+
   if (!session) return null;
   const correct = session.logs.filter((l) => l.ok).length;
   const total = session.logs.length;
@@ -686,10 +699,10 @@ function Result() {
   const duelEnd = session.kind === "duel";
   const sprintEnd = session.kind === "sprint";
   const outcome = duelEnd ? (you > npc ? "你赢了" : you < npc ? "窍窍赢了" : "平手") : null;
-  const next = nextCampaign(stars);
+  const next = nextCampaign(stars, selectedGrade);
   const headline = outcome
-    ?? (sprintEnd ? (correct >= (sprintBest || correct) && correct > 0 ? "新纪录" : "时间到")
-    : lastStars >= 2 ? "开窍了" : lastStars === 1 ? "过关" : total ? "再练一遍" : "时间到");
+    ?? (sprintEnd ? (total >= session.questions.length ? "本轮完成" : "时间到")
+    : session.kind !== "campaign" && total ? "本轮完成" : lastStars >= 2 ? "开窍了" : lastStars === 1 ? "过关" : total ? "再练一遍" : "时间到");
 
   return (
     <div className="flex flex-1 flex-col">
@@ -714,9 +727,9 @@ function Result() {
           <Button
             size="lg"
             className="rounded-2xl"
-            onClick={() => startLevel(next.chapterId, next.level)}
+            onClick={() => lastStars > 0 ? startLevel(next.chapterId, next.level) : startLevel(session.chapterId!, session.level!)}
           >
-            下一关
+            {lastStars > 0 ? "继续闯关" : "再练本关"}
           </Button>
         ) : null}
         {session.kind === "daily" ? (
@@ -748,7 +761,9 @@ function Result() {
 }
 
 function Review() {
-  const wrong = useMath((s) => s.wrong);
+  const selectedGrade = useMath((s) => s.selectedGrade);
+  const allWrong = useMath((s) => s.wrong);
+  const wrong = allWrong.filter((w) => chapterById(w.chapterId).grade === selectedGrade);
   const go = useMath((s) => s.go);
   const startReview = useMath((s) => s.startReview);
   const clearWrong = useMath((s) => s.clearWrong);
@@ -757,7 +772,7 @@ function Review() {
     <div className="flex flex-1 flex-col">
       <Back onClick={() => go("home")} label="错题本" />
       <h2 className="font-display text-2xl tracking-tight">错题本</h2>
-      <p className="mt-1 text-sm text-muted-foreground">先重做原题，再出同类新题。做对就揭掉。</p>
+      <p className="mt-1 text-sm text-muted-foreground">{GRADE_LABEL[selectedGrade]} · 先重做原题，再练同考点。原题做对后移出错题本。</p>
       {!wrong.length ? (
         <p className="mt-10 text-sm text-muted-foreground">还没有错题。先去闯关。</p>
       ) : (
@@ -778,8 +793,8 @@ function Review() {
             <Button className="rounded-2xl" onClick={startReview}>
               回炉重做
             </Button>
-            <Button variant="ghost" className="rounded-2xl text-muted-foreground" onClick={clearWrong}>
-              清空错题
+            <Button variant="ghost" className="rounded-2xl text-muted-foreground" onClick={() => { if (window.confirm("清空本年级错题？清空前可在学情页导出备份。")) clearWrong(); }}>
+              清空本年级错题
             </Button>
           </div>
         </>
@@ -791,7 +806,7 @@ function Review() {
 function Report() {
   const stars = useMath((s) => s.stars);
   const stats = useMath((s) => s.stats);
-  const streak = useMath((s) => s.streak);
+  const streak = useMath((s) => currentStreak(s.streak, s.lastPlayDate));
   const xp = useMath((s) => s.xp);
   const go = useMath((s) => s.go);
   const skillStats = useMath((s) => s.skillStats);
@@ -809,37 +824,32 @@ function Report() {
     <div className="flex flex-1 flex-col">
       <Back onClick={() => go("home")} label="学情" />
       <h2 className="font-display text-2xl tracking-tight">学情</h2>
-      <p className="mt-1 text-sm text-muted-foreground">只存在这台设备上。不比较别人，只看自己哪里还没开窍。</p>
+      <p className="mt-1 text-sm text-muted-foreground">汇总当前浏览器内所有年级的已提交答案；未完成的练习不计通关和打卡。</p>
       <div className="mt-4 grid grid-cols-2 gap-2">
         <Stat label="累计答题" value={String(stats.answered)} />
-        <Stat label="正确率" value={`${acc}%`} />
+        <Stat label="正确率" value={stats.answered ? `${acc}%` : "暂无"} />
         <Stat label="打卡" value={`${streak} 天`} />
         <Stat label="悟性" value={String(xp)} />
       </div>
       <div className="mt-4 rounded-2xl bg-secondary px-3 py-3">
         <div className="text-xs text-muted-foreground">今晚怎么练</div>
         <p className="mt-1 text-sm leading-relaxed">{plan.line}</p>
-        {sprintBest ? <p className="mt-1 text-xs text-muted-foreground">口算冲刺最好 {sprintBest} 题</p> : null}
+        {sprintBest ? <p className="mt-1 text-xs text-muted-foreground">限时练习最好（所有年级） {sprintBest} 题</p> : null}
         {pace ? <p className="mt-1 text-xs text-muted-foreground">{pace.line}</p> : null}
         <button
           type="button"
           className="mt-3 text-xs text-muted-foreground underline-offset-2 hover:underline"
           onClick={() => {
             const lines = [
-              "开窍学情",
-              `累计 ${stats.answered} 题，正确率 ${acc}%`,
+              `开窍学情 · ${todayStamp()}`,
+              "范围：本浏览器所有年级，包含复习和未完成练习中的已答题。",
+              `累计 ${stats.answered} 题，正确率 ${stats.answered ? `${acc}%` : "暂无"}`,
               `打卡 ${streak} 天`,
               plan.line,
               ...weak.slice(0, 4).map((row) => `${row.label} ${Math.round(row.acc * 100)}% · ${row.seen} 题`),
               "只跟自己比，不排名。",
             ];
-            const blob = new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = "开窍-学情.txt";
-            a.click();
-            URL.revokeObjectURL(url);
+            downloadText(`开窍-学情-${todayStamp()}.txt`, lines.join("\n"));
           }}
         >
           导出学情
@@ -855,7 +865,7 @@ function Report() {
             </Button>
           ) : (
             <Button className="flex-1 rounded-2xl" onClick={startSprint}>
-              去冲刺
+              练本年级
             </Button>
           )}
         </div>
@@ -878,6 +888,7 @@ function Report() {
           ))}
         </ul>
       ) : null}
+      <Backup />
       <ul className="mt-4 flex flex-col gap-2 pb-4">
         {CHAPTERS.map((c) => (
           <li key={c.id} className="flex items-center justify-between rounded-2xl bg-secondary px-3 py-2.5">
@@ -890,4 +901,15 @@ function Report() {
       </ul>
     </div>
   );
+}
+
+function GradePicker() {
+  const grade = useMath((s) => s.selectedGrade);
+  const setGrade = useMath((s) => s.setGrade);
+  return <div className="mt-5 flex items-center justify-between rounded-2xl border border-border bg-card px-4 py-3">
+    <label htmlFor="grade" className="text-sm font-medium">练习年级</label>
+    <select id="grade" value={grade} onChange={(e) => setGrade(Number(e.target.value) as Grade)} className="min-h-10 rounded-xl bg-secondary px-3 text-sm">
+      {([1, 2, 3, 4, 5, 6] as const).map((g) => <option key={g} value={g}>{GRADE_LABEL[g]}</option>)}
+    </select>
+  </div>;
 }

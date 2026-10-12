@@ -1,40 +1,25 @@
 import { create } from "zustand";
-import { DAILY_COUNT, DRILL_COUNT, QUESTIONS_PER_LEVEL, SPRINT_COUNT, SPRINT_SECONDS } from "@/lib/math/chapters";
-import { isCorrect, starsFor } from "@/lib/math/grade";
+import { CHAPTERS, DAILY_COUNT, DRILL_COUNT, QUESTIONS_PER_LEVEL, SPRINT_COUNT, SPRINT_SECONDS } from "../lib/math/chapters.ts";
+import { isCorrect, starsFor } from "../lib/math/grade.ts";
 import {
   makeDailySet,
   makeLevelSet,
   makeMixedSet,
-  makeQuestion,
+  makeSimilar,
   makeReviewSet,
-} from "@/lib/math/generate";
+} from "../lib/math/generate.ts";
 import {
-  nextCampaign,
+  isLevelUnlocked,
   shiftStamp,
   starKey,
   todayStamp,
   unlockedChapterIds,
-} from "@/lib/math/progress";
-import { randomRng } from "@/lib/math/rng";
-import { SKILL_DRILL, inferSkill, isSkillId, touchSkill, type SkillId } from "@/lib/math/skills";
-import type { AnswerLog, PlayKind, Question, Screen, SkillStat, WrongItem } from "@/lib/math/types";
+} from "../lib/math/progress.ts";
+import { randomRng } from "../lib/math/rng.ts";
+import { SKILL_DRILL, inferSkill, isSkillId, touchSkill, type SkillId } from "../lib/math/skills.ts";
+import type { AnswerLog, Grade, PlayKind, Question, Screen, WrongItem } from "../lib/math/types.ts";
 
-const SAVE_KEY = "kaiqiao.save.v1";
-const SAVE_VERSION = 2;
-
-type PersistShape = {
-  version: number;
-  stars: Record<string, number>;
-  xp: number;
-  streak: number;
-  lastPlayDate: string;
-  lastDaily: string;
-  wrong: WrongItem[];
-  stats: { answered: number; correct: number };
-  muted: boolean;
-  skillStats: Record<string, SkillStat>;
-  sprintBest: number;
-};
+import { SAVE_KEY, SAVE_VERSION, emptyPersist, parseSave, type PersistShape } from "../lib/math/save.ts";
 
 type Session = {
   kind: PlayKind;
@@ -65,6 +50,10 @@ type MathState = PersistShape & {
   duel: Duel | null;
   sprintRemain: number;
   lastStars: number;
+  storageError: string | null;
+  storageBlocked: boolean;
+  setGrade: (grade: Grade) => void;
+  restore: (data: PersistShape) => boolean;
   hydrate: () => void;
   persist: () => void;
   setMuted: (muted: boolean) => void;
@@ -83,44 +72,11 @@ type MathState = PersistShape & {
   clearWrong: () => void;
 };
 
-const emptyPersist = (): PersistShape => ({
-  version: SAVE_VERSION,
-  stars: {},
-  xp: 0,
-  streak: 0,
-  lastPlayDate: "",
-  lastDaily: "",
-  wrong: [],
-  stats: { answered: 0, correct: 0 },
-  muted: false,
-  skillStats: {},
-  sprintBest: 0,
-});
-
-function readSave(): PersistShape {
-  if (typeof localStorage === "undefined") return emptyPersist();
-  try {
-    const raw = localStorage.getItem(SAVE_KEY);
-    if (!raw) return emptyPersist();
-    const parsed = JSON.parse(raw) as Partial<PersistShape>;
-    return { ...emptyPersist(), ...parsed, version: SAVE_VERSION };
-  } catch {
-    return emptyPersist();
-  }
-}
-
-function writeSave(data: PersistShape) {
-  if (typeof localStorage === "undefined") return;
-  try {
-    localStorage.setItem(SAVE_KEY, JSON.stringify({ ...data, version: SAVE_VERSION }));
-  } catch {
-    /* quota */
-  }
-}
-
 function slicePersist(s: PersistShape): PersistShape {
   return {
     version: SAVE_VERSION,
+    selectedGrade: s.selectedGrade,
+    dailyByGrade: s.dailyByGrade,
     stars: s.stars,
     xp: s.xp,
     streak: s.streak,
@@ -142,7 +98,7 @@ function touchStreak(s: PersistShape): PersistShape {
 }
 
 function pushWrong(list: WrongItem[], item: WrongItem): WrongItem[] {
-  const next = [item, ...list.filter((w) => w.prompt !== item.prompt)];
+  const next = [item, ...list.filter((w) => w.prompt !== item.prompt || w.chapterId !== item.chapterId)];
   return next.slice(0, 40);
 }
 
@@ -166,13 +122,12 @@ function closeSession(s: MathState, session: Session): Partial<MathState> {
     stars,
     sprintBest,
     xp: s.xp + correct * 10 + session.maxCombo * 2,
-    stats: {
-      answered: s.stats.answered + session.logs.length,
-      correct: s.stats.correct + correct,
-    },
   };
-  if (session.kind === "daily") lastDaily = todayStamp();
-  next = touchStreak({ ...next, lastDaily });
+  if (session.kind === "daily" && session.logs.length > 0) {
+    lastDaily = todayStamp();
+    next.dailyByGrade = { ...s.dailyByGrade, [s.selectedGrade]: lastDaily };
+  }
+  next = session.logs.length ? touchStreak({ ...next, lastDaily }) : next;
   return {
     ...next,
     lastStars: earned,
@@ -206,14 +161,50 @@ export const useMath = create<MathState>((set, get) => ({
   duel: null,
   sprintRemain: 0,
   lastStars: 0,
-  hydrate: () => set(readSave()),
-  persist: () => writeSave(slicePersist(get())),
+  storageError: null,
+  storageBlocked: false,
+  hydrate: () => {
+    try {
+      const raw = localStorage.getItem(SAVE_KEY);
+      set({ ...(raw ? parseSave(JSON.parse(raw)) : emptyPersist()), storageError: null, storageBlocked: false });
+    } catch {
+      set({ storageError: "无法读取原存档，已保护原数据。当前练习暂不保存，请先导出备份或恢复有效备份。", storageBlocked: true });
+    }
+  },
+  persist: () => {
+    if (get().storageBlocked) return;
+    try {
+      localStorage.setItem(SAVE_KEY, JSON.stringify(slicePersist(get())));
+      if (get().storageError) set({ storageError: null });
+    } catch {
+      set({ storageError: "浏览器未能保存进度。请在学情页导出备份，避免关闭后丢失。" });
+    }
+  },
+  setGrade: (grade) => {
+    if (![1, 2, 3, 4, 5, 6].includes(grade)) return;
+    set({ selectedGrade: grade, session: null, duel: null, sprintRemain: 0, screen: "home" });
+    get().persist();
+  },
+  restore: (data) => {
+    try {
+      const checked = parseSave(data);
+      localStorage.setItem(SAVE_KEY, JSON.stringify(checked));
+      set({ ...checked, session: null, duel: null, sprintRemain: 0, screen: "report", storageError: null, storageBlocked: false });
+      return true;
+    } catch {
+      set({ storageError: "恢复失败，原有记录未被替换。请检查文件或浏览器存储空间。" });
+      return false;
+    }
+  },
   setMuted: (muted) => {
     set({ muted });
     get().persist();
   },
-  go: (screen) => set({ screen }),
+  go: (screen) => set({ screen, session: null, duel: null, sprintRemain: 0 }),
   startLevel: (chapterId, level) => {
+    const chapter = CHAPTERS.find((c) => c.id === chapterId);
+    if (!chapter || !isLevelUnlocked(get().stars, chapterId, level)) return;
+    set({ selectedGrade: chapter.grade });
     const questions = makeLevelSet(chapterId, level, QUESTIONS_PER_LEVEL, randomRng());
     set({
       screen: "play",
@@ -224,19 +215,19 @@ export const useMath = create<MathState>((set, get) => ({
     });
   },
   startDaily: () => {
-    const ids = unlockedChapterIds(get().stars);
+    const ids = unlockedChapterIds(get().stars, get().selectedGrade);
     const stats = get().stats;
     const acc = stats.answered ? stats.correct / stats.answered : 0.5;
     set({
       screen: "play",
       lastStars: 0,
-      session: newSession("daily", makeDailySet(ids, get().wrong, DAILY_COUNT, randomRng(), acc)),
+      session: newSession("daily", makeDailySet(ids, gradeWrong(get()), DAILY_COUNT, randomRng(), acc)),
       duel: null,
       sprintRemain: 0,
     });
   },
   startReview: () => {
-    const wrong = get().wrong;
+    const wrong = gradeWrong(get());
     if (!wrong.length) {
       set({ screen: "review" });
       return;
@@ -250,7 +241,7 @@ export const useMath = create<MathState>((set, get) => ({
     });
   },
   startDuel: () => {
-    const ids = unlockedChapterIds(get().stars);
+    const ids = unlockedChapterIds(get().stars, get().selectedGrade);
     const q = makeMixedSet(ids, 40, randomRng());
     set({
       screen: "duel",
@@ -261,7 +252,7 @@ export const useMath = create<MathState>((set, get) => ({
     });
   },
   startSprint: () => {
-    const q = makeMixedSet(["warmup", "wan"], SPRINT_COUNT, randomRng());
+    const q = makeMixedSet(unlockedChapterIds(get().stars, get().selectedGrade), SPRINT_COUNT, randomRng());
     set({
       screen: "play",
       lastStars: 0,
@@ -271,25 +262,26 @@ export const useMath = create<MathState>((set, get) => ({
     });
   },
   startDrill: (skill) => {
-    const rows = get().skillStats;
-    const picked =
-      skill ??
-      (Object.entries(rows)
-        .filter((e) => isSkillId(e[0]) && e[1].seen >= 3)
-        .sort((a, b) => a[1].correct / a[1].seen - b[1].correct / b[1].seen)[0]?.[0] as SkillId | undefined);
-    const target = picked && SKILL_DRILL[picked] ? SKILL_DRILL[picked] : { chapterId: "wan", level: 4 };
-    const questions = makeLevelSet(target.chapterId, target.level, DRILL_COUNT, randomRng());
+    const s = get();
+    const picked = skill ?? gradeWrong(s).find((w) => isSkillId(w.skill))?.skill as SkillId | undefined;
+    const recent = gradeWrong(s).find((w) => w.skill === picked);
+    const suggested = picked ? SKILL_DRILL[picked] : undefined;
+    const target = recent ? { chapterId: recent.chapterId, level: 4 }
+      : suggested && CHAPTERS.some((c) => c.id === suggested.chapterId && c.grade === s.selectedGrade) ? suggested
+      : { chapterId: unlockedChapterIds(s.stars, s.selectedGrade)[0]!, level: 3 };
+    const canTarget = !!picked && (recent || suggested?.chapterId === target.chapterId);
+    const questions = Array.from({ length: DRILL_COUNT }, () => makeSimilar({ chapterId: target.chapterId, skill: canTarget ? picked : undefined }, randomRng()));
     set({
       screen: "play",
       lastStars: 0,
-      session: newSession("drill", questions, { chapterId: target.chapterId, level: target.level, skill: picked }),
+      session: newSession("drill", questions, { chapterId: target.chapterId, level: target.level, skill: canTarget ? picked : undefined }),
       duel: null,
       sprintRemain: 0,
     });
   },
   submit: (given) => {
     const session = get().session;
-    if (!session || session.feedback) return false;
+    if (!session || session.feedback || !["play", "duel"].includes(get().screen) || !given.trim()) return false;
     const q = session.questions[session.index];
     if (!q) return false;
     const ok = isCorrect(q, given);
@@ -313,12 +305,13 @@ export const useMath = create<MathState>((set, get) => ({
         keypad: q.keypad,
       });
     } else {
-      wrong = wrong.filter((w) => w.prompt !== q.prompt);
+      wrong = wrong.filter((w) => w.prompt !== q.prompt || w.chapterId !== q.chapterId);
     }
     const skillStats = touchSkill(get().skillStats, skill, ok, ms);
     set({
       wrong,
       skillStats,
+      stats: { answered: get().stats.answered + 1, correct: get().stats.correct + (ok ? 1 : 0) },
       session: {
         ...session,
         combo,
@@ -333,7 +326,7 @@ export const useMath = create<MathState>((set, get) => ({
   advance: () => {
     const s = get();
     const session = s.session;
-    if (!session) return;
+    if (!session || !session.feedback || !["play", "duel"].includes(s.screen)) return;
     const nextIndex = session.index + 1;
     if (session.kind === "duel") {
       if (!s.duel || s.duel.remain <= 0) {
@@ -372,7 +365,7 @@ export const useMath = create<MathState>((set, get) => ({
         const missed = session.logs.filter((l) => !l.ok);
         const extras = missed.map((m) => {
           const src = session.questions.find((q) => q.prompt === m.prompt);
-          return makeQuestion(src?.chapterId ?? "warmup", session.level ?? 4, randomRng());
+          return makeSimilar({ chapterId: src?.chapterId ?? session.questions[0]!.chapterId, skill: src?.skill }, randomRng());
         });
         if (extras.length > 0) {
           set({
@@ -404,7 +397,7 @@ export const useMath = create<MathState>((set, get) => ({
   },
   tickDuel: (dt) => {
     const s = get();
-    if (!s.duel || !s.session || s.screen !== "duel") return;
+    if (!s.duel || !s.session || s.screen !== "duel" || !Number.isFinite(dt) || dt <= 0) return;
     const remain = Math.max(0, s.duel.remain - dt);
     let npcScore = s.duel.npcScore;
     let npcAcc = s.duel.npcAcc + dt;
@@ -431,7 +424,7 @@ export const useMath = create<MathState>((set, get) => ({
   },
   tickSprint: (dt) => {
     const s = get();
-    if (!s.session || s.session.kind !== "sprint" || s.screen !== "play") return;
+    if (!s.session || s.session.kind !== "sprint" || s.screen !== "play" || !Number.isFinite(dt) || dt <= 0) return;
     const remain = Math.max(0, s.sprintRemain - dt);
     if (remain <= 0) {
       const patch = closeSession({ ...s, sprintRemain: 0 }, s.session);
@@ -446,7 +439,12 @@ export const useMath = create<MathState>((set, get) => ({
     get().persist();
   },
   clearWrong: () => {
-    set({ wrong: [] });
+    set({ wrong: get().wrong.filter((w) => CHAPTERS.find((c) => c.id === w.chapterId)?.grade !== get().selectedGrade) });
     get().persist();
   },
 }));
+
+export function gradeWrong(s: Pick<PersistShape, "wrong" | "selectedGrade">): WrongItem[] {
+  const ids = new Set(CHAPTERS.filter((c) => c.grade === s.selectedGrade).map((c) => c.id));
+  return s.wrong.filter((w) => ids.has(w.chapterId));
+}
