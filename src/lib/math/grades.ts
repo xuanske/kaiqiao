@@ -146,11 +146,14 @@ export function g5frac(level: number, rng: Rng): Question {
     );
   }
   const den = rng.int(2, 6);
-  const num = rng.int(1, den - 1);
-  const g = gcd(num, den);
-  const n2 = num / g;
-  const d2 = den / g;
-  return choice(rng, id, `把 ${num}/${den} 约分成最简分数`, `${n2}/${d2}`, `上下同除以 ${g}，得 ${n2}/${d2}。`, [`${num}/${den}`, `${den}/${num}`, `${n2}/${den}`]);
+  const n = rng.int(1, den - 1);
+  const common = gcd(n, den);
+  const n2 = n / common;
+  const d2 = den / common;
+  const factor = rng.int(2, 5);
+  const num = n2 * factor;
+  const originalDen = d2 * factor;
+  return choice(rng, id, `把 ${num}/${originalDen} 约分成最简分数`, `${n2}/${d2}`, `分子分母同除以 ${factor}，得 ${n2}/${d2}。`, [`${num}/${originalDen}`, `${d2}/${n2}`, `${n2}/${originalDen}`]);
 }
 
 /** 五年级：简易方程。 */
@@ -173,7 +176,7 @@ export function g5pct(level: number, rng: Rng): Question {
   const id = "g5pct";
   if (level <= 4) {
     const n = rng.int(1, 9) * 10;
-    return choice(rng, id, `${n}% 等于多少？`, `${n / 100}`, `${n}% = ${n}/100 = ${n / 100}`, ["0." + n, String(n), String(n / 10)]);
+    return choice(rng, id, `${n}% 等于多少？`, `${n / 100}`, `${n}% = ${n}/100 = ${n / 100}`, [String(n / 1000), String(n), String(n / 10)]);
   }
   const whole = rng.int(2, 9) * 10;
   const pct = rng.int(1, 5) * 10;

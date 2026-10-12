@@ -1,4 +1,5 @@
 export type InputMode = "choice" | "keypad";
+export type Grade = 1 | 2 | 3 | 4 | 5 | 6;
 export type KeypadKind = "int" | "remainder" | "dec";
 
 export type Question = {

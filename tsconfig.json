@@ -9,7 +9,7 @@
     "skipLibCheck": true,
     "noEmit": true,
     "isolatedModules": true,
-    "allowImportingTsExtensions": false,
+    "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "baseUrl": ".",
     "paths": { "@/*": ["src/*"] },
