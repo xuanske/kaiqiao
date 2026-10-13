@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { useEffect, type ButtonHTMLAttributes, type ReactNode } from "react";
 import { Delete } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { KeypadKind } from "@/lib/math/types";
@@ -18,6 +18,7 @@ export function Keypad({
   onChange: (next: string) => void;
   onSubmit: () => void;
 }) {
+  const valid = kind === "remainder" ? /^\d+余\d+$/.test(value) : /^\d+(?:\.\d*)?$/.test(value);
   const press = (token: string) => {
     if (disabled) return;
     if (token === "del") {
@@ -25,13 +26,31 @@ export function Keypad({
       return;
     }
     if (token === "." && value.includes(".")) return;
-    if (token === "余" && value.includes("余")) return;
+    if (token === "余" && (!value || value.includes("余"))) return;
     if (value.length >= 10) return;
-    onChange(value + token);
+    onChange(!value && token === "." ? "0." : value + token);
   };
 
+  useEffect(() => {
+    const keydown = (event: KeyboardEvent) => {
+      if (disabled || event.ctrlKey || event.metaKey || event.altKey || event.isComposing || event.repeat) return;
+      const target = event.target;
+      if (target instanceof HTMLElement && (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName))) return;
+      if (/^\d$/.test(event.key)) { event.preventDefault(); press(event.key); }
+      else if (event.key === "Backspace") { event.preventDefault(); press("del"); }
+      else if (event.key === "." && kind === "dec") { event.preventDefault(); press("."); }
+      else if (event.key.toLowerCase() === "r" && kind === "remainder") { event.preventDefault(); press("余"); }
+      else if (event.key === "Enter") {
+        if (target instanceof HTMLElement && target.closest("button") && !target.closest(".keypad")) return;
+        event.preventDefault(); if (valid) onSubmit();
+      }
+    };
+    document.addEventListener("keydown", keydown);
+    return () => document.removeEventListener("keydown", keydown);
+  });
+
   return (
-    <div className="grid grid-cols-3 gap-2">
+    <div className="keypad" role="group" aria-label="数字键盘">
       {DIGITS.map((d) => (
         <Key key={d} disabled={disabled} onClick={() => press(d)}>
           {d}
@@ -54,7 +73,7 @@ export function Keypad({
         0
       </Key>
       {kind === "int" ? (
-        <Key variant="ok" disabled={disabled || !value} onClick={onSubmit}>
+        <Key variant="ok" disabled={disabled || !valid} onClick={onSubmit}>
           确定
         </Key>
       ) : (
@@ -65,9 +84,9 @@ export function Keypad({
       {kind !== "int" ? (
         <button
           type="button"
-          disabled={disabled || !value}
+          disabled={disabled || !valid}
           onClick={onSubmit}
-          className="col-span-3 h-12 rounded-xl bg-ok text-base font-medium text-paper disabled:opacity-40"
+          className="keypad-key keypad-key--ok col-span-3"
         >
           确定
         </button>
@@ -94,8 +113,8 @@ function Key({
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        "flex h-12 items-center justify-center rounded-xl text-lg font-medium tabular-nums transition-[transform,background-color,opacity] duration-150 ease-out active:not-disabled:scale-[0.96] disabled:opacity-40",
-        variant === "ok" ? "bg-ok text-paper" : "bg-secondary text-foreground",
+        "keypad-key",
+        variant === "ok" && "keypad-key--ok",
       )}
       {...rest}
     >

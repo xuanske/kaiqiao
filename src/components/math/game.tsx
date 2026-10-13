@@ -1,306 +1,45 @@
 import { useEffect, useState, type ReactNode } from "react";
-import {
-  BarChart3,
-  BookOpen,
-  ChevronLeft,
-  Lock,
-  Timer,
-  Volume2,
-  VolumeX,
-  Zap,
-} from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, ChevronLeft, Lightbulb, Star, Timer, Volume2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ColumnMath } from "@/components/math/column";
-import {
-  CHAPTERS,
-  DUEL_SECONDS,
-  GRADE_LABEL,
-  LEVELS_PER_CHAPTER,
-  SPRINT_SECONDS,
-  chapterById,
-  chaptersOfGrade,
-} from "@/lib/math/chapters";
+import { ColumnMath } from "./column";
+import { DUEL_SECONDS, SPRINT_SECONDS, chapterById } from "@/lib/math/chapters";
 import { parseColumn } from "@/lib/math/column";
-import { unlockAudio, playBad, playCombo, playOk, playTap, playWin } from "@/lib/math/audio";
-import {
-  chapterStarSum,
-  clearedLevels,
-  isChapterUnlocked,
-  isLevelUnlocked,
-  nextCampaign,
-  starKey,
-  totalStars,
-} from "@/lib/math/progress";
-import { SKILL_HINT, SKILL_LABEL, isSkillId, oralPace, tonightPlan, weakSkills } from "@/lib/math/skills";
+import { unlockAudio, playBad, playCombo, playOk, playWin } from "@/lib/math/audio";
+import { nextCampaign } from "@/lib/math/progress";
+import { SKILL_HINT, SKILL_LABEL, isSkillId } from "@/lib/math/skills";
 import { hushSpeak, speakPrompt } from "@/lib/math/speak";
 import { cn } from "@/lib/utils";
 import { useMath } from "@/store/math";
+import type { Question } from "@/lib/math/types";
 import { Keypad } from "./keypad";
-import { Backup } from "./backup";
-import { downloadText } from "@/lib/download";
-import type { Grade } from "@/lib/math/types";
-import { currentStreak, todayStamp } from "@/lib/math/progress";
-import { Mascot, type Mood } from "./mascot";
+import { LogoMark, Mascot, type Mood } from "./mascot";
+import { AppShell, Meter, Metric } from "./shell";
+import { Home, Map, Report, Review } from "./pages";
 
 export function Game() {
   const screen = useMath((s) => s.screen);
   const hydrate = useMath((s) => s.hydrate);
   const persist = useMath((s) => s.persist);
-  const storageError = useMath((s) => s.storageError);
-
+  useEffect(() => { hydrate(); }, [hydrate]);
   useEffect(() => {
-    hydrate();
-  }, [hydrate]);
-
-  useEffect(() => {
-    const onHide = () => {
-      if (document.visibilityState === "hidden") persist();
-    };
+    const onHide = () => { if (document.visibilityState === "hidden") persist(); };
     document.addEventListener("visibilitychange", onHide);
     return () => document.removeEventListener("visibilitychange", onHide);
   }, [persist]);
-
   useEffect(() => () => hushSpeak(), []);
-
-  return (
-    <div className="flex min-h-dvh justify-center bg-background text-foreground">
-      <div className="flex min-h-dvh w-full max-w-sm flex-col px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))]">
-        {storageError ? <p role="alert" className="mb-3 rounded-xl border border-destructive p-3 text-sm">{storageError}</p> : null}
-        {screen === "home" ? <Home /> : null}
-        {screen === "map" ? <Map /> : null}
-        {screen === "play" ? <Play /> : null}
-        {screen === "duel" ? <Duel /> : null}
-        {screen === "result" ? <Result /> : null}
-        {screen === "review" ? <Review /> : null}
-        {screen === "report" ? <Report /> : null}
-      </div>
-    </div>
-  );
-}
-
-function Home() {
-  const stars = useMath((s) => s.stars);
-  const streak = useMath((s) => currentStreak(s.streak, s.lastPlayDate));
-  const xp = useMath((s) => s.xp);
-  const muted = useMath((s) => s.muted);
-  const setMuted = useMath((s) => s.setMuted);
-  const go = useMath((s) => s.go);
-  const startDaily = useMath((s) => s.startDaily);
-  const startDuel = useMath((s) => s.startDuel);
-  const startSprint = useMath((s) => s.startSprint);
-  const wrong = useMath((s) => s.wrong);
-  const selectedGrade = useMath((s) => s.selectedGrade);
-  const next = nextCampaign(stars, selectedGrade);
-  const hasProgress = chaptersOfGrade(selectedGrade).some((c) => chapterStarSum(stars, c.id) > 0);
-  const dailyDone = useMath((s) => s.dailyByGrade[s.selectedGrade] === todayStamp());
-
-  const tap = () => {
-    unlockAudio();
-    if (!muted) playTap();
-  };
-
-  return (
-    <div className="flex flex-1 flex-col">
-      <header className="flex items-center justify-between">
-        <div className="font-display text-sm tracking-widest">开窍</div>
-        <button
-          type="button"
-          className="flex size-10 items-center justify-center rounded-full text-muted-foreground"
-          onClick={() => setMuted(!muted)}
-          aria-label={muted ? "打开声音" : "关闭声音"}
-        >
-          {muted ? <VolumeX className="size-4" /> : <Volume2 className="size-4" />}
-        </button>
-      </header>
-
-      <div className="mt-6 kai-rise">
-        <Mascot mood="idle" />
-        <h1 className="mt-3 text-center font-display text-4xl tracking-tight">开窍</h1>
-        <p className="mt-1 text-center text-sm text-muted-foreground">小学一到六年级。每天练一组，错题慢慢讲清楚</p>
-      </div>
-
-      <GradePicker />
-      <div className="mt-4 grid grid-cols-3 gap-2">
-        <Stat label="打卡" value={`${streak} 天`} />
-        <Stat label="星" value={String(totalStars(stars))} />
-        <Stat label="悟性" value={String(xp)} />
-      </div>
-
-      <div className="mt-6 flex flex-1 flex-col justify-end gap-2">
-        <Button
-          size="lg"
-          className="h-14 rounded-2xl bg-primary text-primary-foreground"
-          onClick={() => {
-            tap();
-            go("map");
-          }}
-        >
-          {hasProgress ? `继续 · ${chapterById(next.chapterId).name} ${next.level} 关` : "开始闯关"}
-        </Button>
-        <div className="grid grid-cols-3 gap-2">
-          <Button
-            variant="secondary"
-            className="h-12 rounded-2xl px-2"
-            onClick={() => {
-              tap();
-              startSprint();
-            }}
-          >
-            <Timer className="size-4" />
-            限时
-          </Button>
-          <Button
-            variant="secondary"
-            className="h-12 rounded-2xl px-2"
-            onClick={() => {
-              tap();
-              startDaily();
-            }}
-          >
-            {dailyDone ? "今日已练 ✓" : "每日 10 题"}
-          </Button>
-          <Button
-            variant="secondary"
-            className="h-12 rounded-2xl px-2"
-            onClick={() => {
-              tap();
-              startDuel();
-            }}
-          >
-            <Zap className="size-4" />
-            对决
-          </Button>
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          <Button
-            variant="ghost"
-            className="rounded-2xl text-muted-foreground"
-            onClick={() => {
-              tap();
-              go("review");
-            }}
-          >
-            <BookOpen className="size-4" />
-            错题 {wrong.filter((w) => chapterById(w.chapterId).grade === selectedGrade).length || ""}
-          </Button>
-          <Button
-            variant="ghost"
-            className="rounded-2xl text-muted-foreground"
-            onClick={() => {
-              tap();
-              go("report");
-            }}
-          >
-            <BarChart3 className="size-4" />
-            学情
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl bg-secondary px-3 py-3 text-center">
-      <div className="font-display text-xl tabular-nums leading-none">{value}</div>
-      <div className="mt-1 text-xs text-muted-foreground">{label}</div>
-    </div>
-  );
+  return <AppShell screen={screen}>
+    {screen === "home" ? <Home /> : null}
+    {screen === "map" ? <Map /> : null}
+    {screen === "play" ? <Play /> : null}
+    {screen === "duel" ? <Duel /> : null}
+    {screen === "result" ? <Result /> : null}
+    {screen === "review" ? <Review /> : null}
+    {screen === "report" ? <Report /> : null}
+  </AppShell>;
 }
 
 function Back({ onClick, label }: { onClick: () => void; label: string }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex h-10 items-center gap-1 text-sm text-muted-foreground"
-    >
-      <ChevronLeft className="size-4" />
-      {label}
-    </button>
-  );
-}
-
-function Map() {
-  const stars = useMath((s) => s.stars);
-  const go = useMath((s) => s.go);
-  const startLevel = useMath((s) => s.startLevel);
-  const muted = useMath((s) => s.muted);
-  const selectedGrade = useMath((s) => s.selectedGrade);
-  const next = nextCampaign(stars, selectedGrade);
-
-  return (
-    <div className="flex flex-1 flex-col">
-      <Back onClick={() => go("home")} label="开窍" />
-      <h2 className="font-display text-2xl tracking-tight">闯关地图</h2>
-      <p className="mt-1 text-sm text-muted-foreground">{GRADE_LABEL[selectedGrade]} · 过三关解锁下一章，每关八题。</p>
-      <ol className="mt-4 flex flex-col gap-3 pb-4">
-        {([selectedGrade]).map((grade) => (
-          <li key={grade}>
-            <div className="mb-2 text-xs tracking-widest text-muted-foreground">{GRADE_LABEL[grade]}</div>
-            <ul className="flex flex-col gap-3">
-        {chaptersOfGrade(grade).map((chapter, index) => {
-          const open = isChapterUnlocked(stars, chapter.id);
-          const sum = chapterStarSum(stars, chapter.id);
-          const done = clearedLevels(stars, chapter.id);
-          return (
-            <li key={chapter.id} className="rounded-2xl bg-secondary p-3">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <div className="text-xs text-muted-foreground">
-                    {String(index + 1).padStart(2, "0")} · {chapter.term}
-                  </div>
-                  <div className="font-display text-lg leading-tight">{chapter.name}</div>
-                  <div className="mt-0.5 text-xs text-muted-foreground">{chapter.blurb}</div>
-                </div>
-                {open ? (
-                  <div className="text-xs tabular-nums text-accent">{done}/{LEVELS_PER_CHAPTER}</div>
-                ) : (
-                  <Lock className="size-4 text-muted-foreground" />
-                )}
-              </div>
-              <div className="mt-3 flex flex-wrap gap-1.5">
-                {Array.from({ length: LEVELS_PER_CHAPTER }, (_, i) => {
-                  const level = i + 1;
-                  const got = stars[starKey(chapter.id, level)] ?? 0;
-                  const unlocked = open && isLevelUnlocked(stars, chapter.id, level);
-                  const current = next.chapterId === chapter.id && next.level === level;
-                  return (
-                    <button
-                      key={level}
-                      type="button"
-                      disabled={!unlocked}
-                      onClick={() => {
-                        if (!muted) playTap();
-                        startLevel(chapter.id, level);
-                      }}
-                      className={cn(
-                        "flex h-9 w-9 flex-col items-center justify-center rounded-xl text-xs tabular-nums transition-[transform,background-color] duration-150 active:not-disabled:scale-95 disabled:opacity-35",
-                        current ? "bg-primary text-primary-foreground" : "bg-background text-foreground",
-                      )}
-                    >
-                      <span>{level}</span>
-                      <span className="h-1 w-5 overflow-hidden rounded-full bg-background/30">
-                        <span
-                          className="block h-full bg-accent"
-                          style={{ width: `${(got / 3) * 100}%` }}
-                        />
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="sr-only">本章 {sum} 星</div>
-            </li>
-          );
-        })}
-            </ul>
-          </li>
-        ))}
-      </ol>
-    </div>
-  );
+  return <button type="button" onClick={onClick} className="back-button"><ChevronLeft size={18} />{label}</button>;
 }
 
 function playTitle(kind: string, chapterId?: string, level?: number, skill?: string): string {
@@ -374,10 +113,11 @@ function Play() {
 
   if (countIn > 0) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-3 kai-pop">
+      <div className="countdown page-enter">
         <Mascot mood="idle" />
-        <p className="text-sm text-muted-foreground">准备</p>
-        <p className="font-display text-6xl tabular-nums">{countIn}</p>
+        <p className="eyebrow">准备 · 先读题，再作答</p>
+        <p className="countdown-number">{countIn}</p>
+        <Back onClick={() => go("home")} label="返回练习" />
       </div>
     );
   }
@@ -400,11 +140,13 @@ function Play() {
   return (
     <AskShell
       mood={mood}
-      title={playTitle(session.kind, session.chapterId, session.level, session.skill)}
+      title={`${session.retried ? "巩固加练 · " : ""}${playTitle(session.kind, session.chapterId, session.level, session.skill)}`}
       onBack={() => {
         if (window.confirm("结束本轮？已提交的答案会保留，未完成的练习不计通关或打卡。")) go("home");
       }}
       progress={isSprint ? `${remain}s` : `${session.index + 1} / ${total}`}
+      completed={session.index}
+      total={isSprint ? undefined : total}
       combo={session.combo}
       qPrompt={q.prompt}
       feedback={feedback}
@@ -425,41 +167,7 @@ function Play() {
         ) : null
       }
     >
-      {q.mode === "choice" ? (
-        <div className={cn("grid gap-2", (q.choices?.length ?? 0) > 2 ? "grid-cols-2" : "grid-cols-1")}>
-          {(q.choices ?? []).map((c) => {
-            const picked = feedback?.given === c;
-            return (
-              <button
-                key={c}
-                type="button"
-                disabled={!!feedback}
-                onClick={() => onSubmit(c)}
-                className={cn(
-                  "min-h-12 rounded-2xl bg-secondary px-3 py-3 text-sm font-medium leading-snug transition-[transform,background-color] duration-150 active:not-disabled:scale-[0.98] disabled:opacity-100",
-                  picked && feedback?.ok && "bg-ok text-paper",
-                  picked && feedback && !feedback.ok && "bg-destructive text-destructive-foreground",
-                )}
-              >
-                {c}
-              </button>
-            );
-          })}
-        </div>
-      ) : (
-        <div className="flex flex-col gap-3">
-          <div className="flex h-12 items-center justify-end rounded-2xl bg-secondary px-4 font-display text-2xl tabular-nums">
-            {draft || <span className="text-muted-foreground">?</span>}
-          </div>
-          <Keypad
-            value={draft}
-            kind={q.keypad ?? "int"}
-            disabled={!!feedback}
-            onChange={setDraft}
-            onSubmit={() => onSubmit(draft)}
-          />
-        </div>
-      )}
+      <QuestionInput question={q} value={draft} disabled={!!feedback} onChange={setDraft} onSubmit={onSubmit} />
     </AskShell>
   );
 }
@@ -526,7 +234,7 @@ function Duel() {
       answer={q.answer}
       onSkip={advance}
       extra={
-        <div className="grid grid-cols-2 gap-2">
+        <div><div className="grid grid-cols-2 gap-2">
           <div className="rounded-xl bg-secondary px-3 py-2">
             <div className="text-xs text-muted-foreground">你</div>
             <div className="font-display text-xl tabular-nums">{you}</div>
@@ -535,141 +243,54 @@ function Duel() {
             <div className="text-xs text-muted-foreground">窍窍（电脑）</div>
             <div className="font-display text-xl tabular-nums">{duel.npcScore}</div>
           </div>
-        </div>
+        </div><div className="mt-4"><Meter value={duel.remain} max={DUEL_SECONDS} label="对决剩余时间" /></div></div>
       }
     >
-      <div
-        className="mb-3 h-1 overflow-hidden rounded-full bg-secondary"
-        aria-hidden
-      >
-        <div
-          className="h-full bg-accent transition-[width] duration-100"
-          style={{ width: `${(duel.remain / DUEL_SECONDS) * 100}%` }}
-        />
-      </div>
-      {q.mode === "choice" ? (
-        <div className={cn("grid gap-2", (q.choices?.length ?? 0) > 2 ? "grid-cols-2" : "grid-cols-1")}>
-          {(q.choices ?? []).map((c) => (
-            <button
-              key={c}
-              type="button"
-              disabled={!!feedback}
-              onClick={() => onSubmit(c)}
-              className="min-h-12 rounded-2xl bg-secondary px-3 py-3 text-sm font-medium"
-            >
-              {c}
-            </button>
-          ))}
-        </div>
-      ) : (
-        <div className="flex flex-col gap-3">
-          <div className="flex h-12 items-center justify-end rounded-2xl bg-secondary px-4 font-display text-2xl tabular-nums">
-            {draft || <span className="text-muted-foreground">?</span>}
-          </div>
-          <Keypad
-            value={draft}
-            kind={q.keypad ?? "int"}
-            disabled={!!feedback}
-            onChange={setDraft}
-            onSubmit={() => onSubmit(draft)}
-          />
-        </div>
-      )}
+      <QuestionInput question={q} value={draft} disabled={!!feedback} onChange={setDraft} onSubmit={onSubmit} />
     </AskShell>
   );
 }
 
-function AskShell({
-  mood,
-  title,
-  onBack,
-  progress,
-  combo,
-  qPrompt,
-  feedback,
-  explain,
-  answer,
-  trap,
-  skill,
-  fromWrong,
-  onSkip,
-  extra,
-  children,
-}: {
-  mood: Mood;
-  title: string;
-  onBack: () => void;
-  progress: string;
-  combo: number;
-  qPrompt: string;
-  feedback: null | { ok: boolean; given: string };
-  explain: string;
-  answer: string;
-  trap?: string;
-  skill?: string;
-  fromWrong?: boolean;
-  onSkip: () => void;
-  extra?: ReactNode;
-  children: ReactNode;
+function QuestionInput({ question: q, value, disabled, onChange, onSubmit }: { question: Question; value: string; disabled: boolean; onChange: (value: string) => void; onSubmit: (value: string) => void }) {
+  return q.mode === "choice" ? <div className="answer-area"><p className="answer-label">选出你认为正确的答案</p><div className={cn("choice-grid", (q.choices?.length ?? 0) <= 2 && "choice-grid--two")}>
+    {(q.choices ?? []).map((choice, i) => <button key={choice} type="button" disabled={disabled} className="choice-button" onClick={() => onSubmit(choice)}><span>{String.fromCharCode(65 + i)}</span><strong>{choice}</strong></button>)}
+  </div></div> : <div className="answer-area"><label className="answer-label" htmlFor="answer-display">你的答案</label><output id="answer-display" className="answer-display" aria-live="polite">{value || <span>点数字，写下答案</span>}{value ? <i aria-hidden="true" /> : null}</output><Keypad value={value} kind={q.keypad ?? "int"} disabled={disabled} onChange={onChange} onSubmit={() => onSubmit(value)} /><p className="keyboard-note">{q.keypad === "remainder" ? "数字键输入，R 输入余，Enter 确认" : "也可以用数字键输入，按 Enter 确认"}</p></div>;
+}
+
+function AskShell({ mood, title, onBack, progress, completed = 0, total, combo, qPrompt, feedback, explain, answer, trap, skill, fromWrong, onSkip, extra, children }: {
+  mood: Mood; title: string; onBack: () => void; progress: string; completed?: number; total?: number; combo: number; qPrompt: string;
+  feedback: null | { ok: boolean; given: string }; explain: string; answer: string; trap?: string; skill?: string; fromWrong?: boolean;
+  onSkip: () => void; extra?: ReactNode; children: ReactNode;
 }) {
   const work = !feedback || feedback.ok ? null : parseColumn(qPrompt);
   const skillLabel = isSkillId(skill) ? SKILL_LABEL[skill] : null;
   const hint = isSkillId(skill) ? SKILL_HINT[skill] : null;
-
-  return (
-    <div className="flex flex-1 flex-col">
-      <div className="flex items-center justify-between gap-2">
-        <Back onClick={onBack} label={title} />
-        <div className="flex items-center gap-2 text-xs tabular-nums text-muted-foreground">
-          {combo >= 2 ? <span className="text-accent">连击 {combo}</span> : null}
-          <span>{progress}</span>
-        </div>
-      </div>
-      <Mascot mood={mood} className="h-24 w-20" />
-      {extra ? <div className="mt-1">{extra}</div> : null}
-      <div
-        className={cn(
-          "relative mt-2 rounded-3xl bg-card p-5 text-card-foreground",
-          feedback && !feedback.ok && "kai-shake",
-          feedback?.ok && "kai-pop",
-        )}
-      >
-        <div className="flex items-start justify-between gap-2">
-          <p className="font-display text-xl leading-snug">{qPrompt}</p>
-          <button
-            type="button"
-            className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full text-card-foreground/50"
-            onClick={() => speakPrompt(qPrompt)}
-            aria-label="读题"
-          >
-            <Volume2 className="size-4" />
-          </button>
-        </div>
-        {fromWrong && !feedback ? (
-          <p className="mt-2 text-xs text-lantern">上次错过的原题</p>
-        ) : null}
-        {feedback ? (
-          <div className="mt-3" aria-live="polite">
-            <div>
-              <p className={cn("text-sm font-medium", feedback.ok ? "text-ok" : "text-destructive")}>
-                {feedback.ok ? "答对了" : `正确答案 ${answer}`}
-              </p>
-              {!feedback.ok && trap ? <p className="mt-1 text-sm text-destructive/80">{trap}</p> : null}
-              {!feedback.ok && !trap && hint ? <p className="mt-1 text-sm text-destructive/80">{hint}</p> : null}
-              <p className="mt-1 text-sm leading-relaxed text-card-foreground/70">{explain}</p>
-              {skillLabel && !feedback.ok ? (
-                <p className="mt-1 text-xs text-card-foreground/50">考点 · {skillLabel}</p>
-              ) : null}
-            </div>
-            {work ? <ColumnMath work={work} wrong /> : null}
-            <Button className="mt-3 w-full rounded-xl" onClick={onSkip}>{feedback.ok ? "下一题" : "看懂了，继续"}</Button>
-          </div>
-        ) : null}
-      </div>
-      <div className="mt-4 flex-1">{children}</div>
+  return <div className="practice-page page-enter">
+    <header className="practice-topbar"><div className="brand"><LogoMark /><strong>开窍</strong></div><button type="button" onClick={onBack} className="back-button"><X size={18} />结束练习</button></header>
+    <div className="practice-heading"><div><p className="eyebrow">专心这一题，就很好</p><h1>{title}</h1></div><span className="question-counter">{!total ? <Timer size={17} /> : null}{progress}{total ? <small>题</small> : null}</span></div>
+    {total ? <Meter value={completed + (feedback ? 1 : 0)} max={total} label="本轮答题进度" /> : null}
+    {extra ? <div className="practice-extra">{extra}</div> : null}
+    <div className={cn("practice-workspace", feedback && "has-feedback")}>
+      <section className="question-card" aria-label="题目">
+        <div className="question-card-top"><span className="soft-badge">{fromWrong ? "原题再练" : skillLabel ?? "认真想一想"}</span>{combo >= 2 ? <span className="combo-badge"><SparkleIcon />连对 {combo} 题</span> : null}<button type="button" className="icon-button ml-auto" onClick={() => speakPrompt(qPrompt)} aria-label="读题"><Volume2 size={19} /></button></div>
+        <p className={cn("question-prompt", qPrompt.length > 28 && "question-prompt--long")}>{qPrompt}</p>
+        {!feedback ? <div className="question-encouragement"><Mascot mood={mood} /><span>不着急，先想清楚。</span></div> : null}
+        {feedback ? <div className={cn("feedback-box", !feedback.ok && "feedback-box--retry")} role="status">
+          <div className="feedback-title">{feedback.ok ? <CheckCircle2 size={23} /> : <Lightbulb size={23} />}<strong>{feedback.ok ? "答对了，想得很棒！" : "没关系，一起弄明白。"}</strong></div>
+          {!feedback.ok ? <div className="answer-comparison"><span>你的答案 <b>{feedback.given}</b></span><span>正确答案 <strong>{answer}</strong></span></div> : null}
+          <p className="feedback-explain">{explain}</p>
+          {!feedback.ok && (trap || hint) ? <p className="feedback-tip">小提醒 · {trap || hint}</p> : null}
+          {work ? <ColumnMath work={work} wrong /> : null}
+          <Button size="lg" className="mt-5 w-full" onClick={onSkip}>{feedback.ok ? "下一题" : "看懂了，继续"}<ArrowRight /></Button>
+        </div> : null}
+      </section>
+      {!feedback ? children : null}
     </div>
-  );
+    <p className="practice-footnote">{total ? "每道题都可以慢慢想。答完后，点「下一题」继续。" : "限时模式会自动进入下一题，错题会留在错题本。"}</p>
+  </div>;
 }
+
+function SparkleIcon() { return <Star size={13} fill="currentColor" />; }
 
 function Result() {
   const session = useMath((s) => s.session);
@@ -704,212 +325,26 @@ function Result() {
     ?? (sprintEnd ? (total >= session.questions.length ? "本轮完成" : "时间到")
     : session.kind !== "campaign" && total ? "本轮完成" : lastStars >= 2 ? "开窍了" : lastStars === 1 ? "过关" : total ? "再练一遍" : "时间到");
 
-  return (
-    <div className="flex flex-1 flex-col">
-      <Back onClick={() => go("home")} label="回家" />
-      <Mascot mood={duelEnd && you < npc ? "sad" : "happy"} />
-      <h2 className="mt-2 text-center font-display text-3xl tracking-tight">{headline}</h2>
-      <p className="mt-2 text-center text-sm text-muted-foreground">
-        {duelEnd ? `你 ${you} · 窍窍 ${npc}` : sprintEnd ? `答对 ${correct} 题 · 最好 ${sprintBest}` : `答对 ${correct} / ${total}`}
-      </p>
-      {!duelEnd && !sprintEnd && session.kind === "campaign" ? (
-        <div className="mt-4 flex justify-center gap-1 text-accent">
-          {[1, 2, 3].map((n) => (
-            <span key={n} className={cn("inline-block size-3 rounded-full", n > lastStars ? "bg-secondary" : "bg-accent")} />
-          ))}
-        </div>
-      ) : null}
-      {session.maxCombo >= 3 ? (
-        <p className="mt-2 text-center text-xs text-muted-foreground">最高连击 {session.maxCombo}</p>
-      ) : null}
-      <div className="mt-auto flex flex-col gap-2">
-        {session.kind === "campaign" && session.chapterId && session.level ? (
-          <Button
-            size="lg"
-            className="rounded-2xl"
-            onClick={() => lastStars > 0 ? startLevel(next.chapterId, next.level) : startLevel(session.chapterId!, session.level!)}
-          >
-            {lastStars > 0 ? "继续闯关" : "再练本关"}
-          </Button>
-        ) : null}
-        {session.kind === "daily" ? (
-          <Button size="lg" className="rounded-2xl" onClick={startDaily}>
-            再练一组
-          </Button>
-        ) : null}
-        {session.kind === "drill" ? (
-          <Button size="lg" className="rounded-2xl" onClick={() => startDrill(session.skill)}>
-            再练这组
-          </Button>
-        ) : null}
-        {sprintEnd ? (
-          <Button size="lg" className="rounded-2xl" onClick={startSprint}>
-            再冲一次
-          </Button>
-        ) : null}
-        {duelEnd ? (
-          <Button size="lg" className="rounded-2xl" onClick={startDuel}>
-            再对决
-          </Button>
-        ) : null}
-        <Button variant="secondary" className="rounded-2xl" onClick={() => go("map")}>
-          回地图
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-function Review() {
-  const selectedGrade = useMath((s) => s.selectedGrade);
-  const allWrong = useMath((s) => s.wrong);
-  const wrong = allWrong.filter((w) => chapterById(w.chapterId).grade === selectedGrade);
-  const go = useMath((s) => s.go);
-  const startReview = useMath((s) => s.startReview);
-  const clearWrong = useMath((s) => s.clearWrong);
-
-  return (
-    <div className="flex flex-1 flex-col">
-      <Back onClick={() => go("home")} label="错题本" />
-      <h2 className="font-display text-2xl tracking-tight">错题本</h2>
-      <p className="mt-1 text-sm text-muted-foreground">{GRADE_LABEL[selectedGrade]} · 先重做原题，再练同考点。原题做对后移出错题本。</p>
-      {!wrong.length ? (
-        <p className="mt-10 text-sm text-muted-foreground">还没有错题。先去闯关。</p>
-      ) : (
-        <>
-          <ul className="mt-4 flex flex-col gap-2">
-            {wrong.slice(0, 12).map((w) => (
-              <li key={w.at + w.prompt} className="rounded-2xl bg-secondary px-3 py-3">
-                <div className="text-sm leading-snug">{w.prompt}</div>
-                <div className="mt-1 text-xs text-muted-foreground">
-                  你写 {w.given} · 应是 {w.answer}
-                  {w.skill && isSkillId(w.skill) ? ` · ${SKILL_LABEL[w.skill]}` : ""}
-                </div>
-                {w.trap ? <div className="mt-1 text-xs text-lantern">{w.trap}</div> : null}
-              </li>
-            ))}
-          </ul>
-          <div className="mt-auto flex flex-col gap-2 pt-4">
-            <Button className="rounded-2xl" onClick={startReview}>
-              回炉重做
-            </Button>
-            <Button variant="ghost" className="rounded-2xl text-muted-foreground" onClick={() => { if (window.confirm("清空本年级错题？清空前可在学情页导出备份。")) clearWrong(); }}>
-              清空本年级错题
-            </Button>
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-function Report() {
-  const stars = useMath((s) => s.stars);
-  const stats = useMath((s) => s.stats);
-  const streak = useMath((s) => currentStreak(s.streak, s.lastPlayDate));
-  const xp = useMath((s) => s.xp);
-  const go = useMath((s) => s.go);
-  const skillStats = useMath((s) => s.skillStats);
-  const wrong = useMath((s) => s.wrong);
-  const sprintBest = useMath((s) => s.sprintBest);
-  const startDrill = useMath((s) => s.startDrill);
-  const startSprint = useMath((s) => s.startSprint);
-  const startReview = useMath((s) => s.startReview);
-  const acc = stats.answered ? Math.round((stats.correct / stats.answered) * 100) : 0;
-  const plan = tonightPlan(skillStats, wrong);
-  const pace = oralPace(skillStats);
-  const weak = weakSkills(skillStats);
-
-  return (
-    <div className="flex flex-1 flex-col">
-      <Back onClick={() => go("home")} label="学情" />
-      <h2 className="font-display text-2xl tracking-tight">学情</h2>
-      <p className="mt-1 text-sm text-muted-foreground">汇总当前浏览器内所有年级的已提交答案；未完成的练习不计通关和打卡。</p>
-      <div className="mt-4 grid grid-cols-2 gap-2">
-        <Stat label="累计答题" value={String(stats.answered)} />
-        <Stat label="正确率" value={stats.answered ? `${acc}%` : "暂无"} />
-        <Stat label="打卡" value={`${streak} 天`} />
-        <Stat label="悟性" value={String(xp)} />
-      </div>
-      <div className="mt-4 rounded-2xl bg-secondary px-3 py-3">
-        <div className="text-xs text-muted-foreground">今晚怎么练</div>
-        <p className="mt-1 text-sm leading-relaxed">{plan.line}</p>
-        {sprintBest ? <p className="mt-1 text-xs text-muted-foreground">限时练习最好（所有年级） {sprintBest} 题</p> : null}
-        {pace ? <p className="mt-1 text-xs text-muted-foreground">{pace.line}</p> : null}
-        <button
-          type="button"
-          className="mt-3 text-xs text-muted-foreground underline-offset-2 hover:underline"
-          onClick={() => {
-            const lines = [
-              `开窍学情 · ${todayStamp()}`,
-              "范围：本浏览器所有年级，包含复习和未完成练习中的已答题。",
-              `累计 ${stats.answered} 题，正确率 ${stats.answered ? `${acc}%` : "暂无"}`,
-              `打卡 ${streak} 天`,
-              plan.line,
-              ...weak.slice(0, 4).map((row) => `${row.label} ${Math.round(row.acc * 100)}% · ${row.seen} 题`),
-              "只跟自己比，不排名。",
-            ];
-            downloadText(`开窍-学情-${todayStamp()}.txt`, lines.join("\n"));
-          }}
-        >
-          导出学情
-        </button>
-        <div className="mt-3 flex gap-2">
-          {plan.skill ? (
-            <Button className="flex-1 rounded-2xl" onClick={() => startDrill(plan.skill)}>
-              对症 8 题
-            </Button>
-          ) : wrong.length ? (
-            <Button className="flex-1 rounded-2xl" onClick={startReview}>
-              回炉错题
-            </Button>
-          ) : (
-            <Button className="flex-1 rounded-2xl" onClick={startSprint}>
-              练本年级
-            </Button>
-          )}
-        </div>
-      </div>
-      {weak.length ? (
-        <ul className="mt-4 flex flex-col gap-2">
-          {weak.slice(0, 4).map((row) => (
-            <li key={row.id}>
-              <button
-                type="button"
-                className="flex w-full items-center justify-between rounded-2xl bg-secondary px-3 py-2.5 text-left"
-                onClick={() => startDrill(row.id)}
-              >
-                <span className="text-sm">{row.label}</span>
-                <span className="text-xs tabular-nums text-lantern">
-                  {Math.round(row.acc * 100)}% · {row.seen} 题
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      <Backup />
-      <ul className="mt-4 flex flex-col gap-2 pb-4">
-        {CHAPTERS.map((c) => (
-          <li key={c.id} className="flex items-center justify-between rounded-2xl bg-secondary px-3 py-2.5">
-            <span className="text-sm">{c.name}</span>
-            <span className="text-xs tabular-nums text-muted-foreground">
-              {clearedLevels(stars, c.id)}/{LEVELS_PER_CHAPTER} 关 · {chapterStarSum(stars, c.id)} 星
-            </span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-function GradePicker() {
-  const grade = useMath((s) => s.selectedGrade);
-  const setGrade = useMath((s) => s.setGrade);
-  return <div className="mt-5 flex items-center justify-between rounded-2xl border border-border bg-card px-4 py-3">
-    <label htmlFor="grade" className="text-sm font-medium">练习年级</label>
-    <select id="grade" value={grade} onChange={(e) => setGrade(Number(e.target.value) as Grade)} className="min-h-10 rounded-xl bg-secondary px-3 text-sm">
-      {([1, 2, 3, 4, 5, 6] as const).map((g) => <option key={g} value={g}>{GRADE_LABEL[g]}</option>)}
-    </select>
+  const accuracy = total ? Math.round(correct / total * 100) : null;
+  const retry = () => {
+    if (session.kind === "campaign" && session.chapterId && session.level) return lastStars > 0 ? startLevel(next.chapterId, next.level) : startLevel(session.chapterId, session.level);
+    if (session.kind === "daily") return startDaily();
+    if (session.kind === "drill") return startDrill(session.skill);
+    if (sprintEnd) return startSprint();
+    if (duelEnd) return startDuel();
+    return go("review");
+  };
+  return <div className="result-page page-enter">
+    <Back onClick={() => go("home")} label="回到练习" />
+    <section className="result-card">
+      <span className="eyebrow">{total ? "每一次认真，都值得记录" : "准备好时，再试一次"}</span>
+      <Mascot mood={!correct && total ? "think" : "happy"} />
+      <h1>{headline}</h1>
+      <p>{duelEnd ? `你答对 ${you} 题 · 窍窍（电脑）答对 ${npc} 题` : sprintEnd ? `本轮答对 ${correct} 题 · 最好成绩 ${sprintBest} 题` : correct === total && total > 0 ? "这一组，全都想明白了！" : "把不熟悉的题再想一遍，就会更稳。"}</p>
+      {session.kind === "campaign" ? <div className="result-stars" aria-label={`本轮获得 ${lastStars} 颗星`} >{[1, 2, 3].map((n) => <Star key={n} size={34} className={cn(n <= lastStars && "is-earned")} />)}</div> : null}
+      <div className="result-metrics"><Metric label="答对 / 已答" value={`${correct} / ${total}`} /><Metric label="本轮正确率" value={accuracy === null ? '—' : `${accuracy}%`} /><Metric label="最高连对" value={`${session.maxCombo} 题`} /></div>
+      <div className="result-actions"><Button size="lg" onClick={retry}>{session.kind === "campaign" ? lastStars > 0 ? "继续闯关" : "再练本关" : session.kind === "review" ? "回到错题本" : "再练一组"}<ArrowRight /></Button><Button variant="outline" size="lg" onClick={() => go("report")}>看看学习小结</Button></div>
+      <button type="button" className="back-button mx-auto mt-4" onClick={() => go("home")}><ArrowLeft size={15} />今天先练到这里</button>
+    </section>
   </div>;
 }
