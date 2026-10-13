@@ -3,8 +3,8 @@
   "short_name": "开窍",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#eef3ea",
-  "theme_color": "#3d6b45",
+  "background_color": "#f7f8f3",
+  "theme_color": "#285847",
   "lang": "zh-CN",
   "scope": "./"
 }

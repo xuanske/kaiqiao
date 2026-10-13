@@ -2,53 +2,36 @@ import { cn } from "@/lib/utils";
 
 export type Mood = "idle" | "happy" | "sad" | "think";
 
+/** Local vector artwork keeps the illustration crisp and available offline. */
 export function Mascot({ mood = "idle", className }: { mood?: Mood; className?: string }) {
   return (
-    <div className={cn("relative mx-auto h-32 w-24", className)} aria-hidden>
-      <div className={cn("flex h-full flex-col items-center pt-1", mood === "idle" && "kai-bob")}>
-        <div className="size-2.5 rounded-full bg-lantern" />
-        <div className="-mt-0.5 h-2 w-8 rounded-t-full bg-lantern" />
-        <div className="flex h-20 w-20 flex-col items-center justify-center rounded-full bg-lantern shadow-[0_10px_22px_-10px_rgba(0,0,0,0.45)]">
-          <div className="flex items-center gap-3">
-            <Eye mood={mood} />
-            <Eye mood={mood} />
-          </div>
-          <Mouth mood={mood} />
-        </div>
-        <div className="h-5 w-1 rounded-full bg-accent" />
-        <div className="-mt-1 size-2 rounded-full bg-accent" />
-      </div>
-    </div>
+    <svg viewBox="0 0 160 168" className={cn("mascot", className)} aria-hidden="true">
+      <ellipse cx="81" cy="151" rx="37" ry="7" fill="#173E31" opacity=".09" />
+      <g className={mood === "idle" ? "lantern-float" : undefined}>
+        <path d="M75 24c-2-10 5-17 14-16" fill="none" stroke="#325B44" strokeWidth="6" strokeLinecap="round" />
+        <rect x="57" y="22" width="48" height="12" rx="6" fill="#35654B" />
+        <path d="M30 81c0-32 20-50 50-50s51 18 51 50-20 52-51 52S30 113 30 81" fill="#F0C96D" />
+        <path d="M80 34c-20 19-23 75-3 95M90 35c20 24 19 66 8 90" fill="none" stroke="#E3AE4A" strokeWidth="3" opacity=".55" />
+        <path d="M46 53c5-7 10-10 15-12" fill="none" stroke="#FFF2CE" strokeWidth="7" strokeLinecap="round" />
+        <ellipse cx="50" cy="92" rx="9" ry="5" fill="#E8A56C" opacity=".8" />
+        <ellipse cx="110" cy="92" rx="9" ry="5" fill="#E8A56C" opacity=".8" />
+        {mood === "happy" ? <g fill="none" stroke="#294737" strokeWidth="4.5" strokeLinecap="round"><path d="M56 79q6-9 12 0M93 79q6-9 12 0" /></g> : <g fill="#294737"><ellipse cx="62" cy="79" rx="4" ry="6" /><ellipse cx="99" cy="79" rx="4" ry="6" /></g>}
+        {mood === "think" ? <circle cx="81" cy="95" r="4" fill="#294737" /> : <path d={mood === "sad" ? "M73 99q8-8 16 0" : "M73 95q8 9 16 0"} fill="none" stroke="#294737" strokeWidth="3.5" strokeLinecap="round" />}
+        <rect x="67" y="128" width="27" height="8" rx="4" fill="#35654B" />
+        <path d="M80 137v9m-5-6v7m10-7v7" stroke="#DFA84C" strokeWidth="3" strokeLinecap="round" />
+      </g>
+      <g fill="#D7AA54"><path d="m24 36 2 6 6 2-6 2-2 6-2-6-6-2 6-2Z" /><path d="m136 105 2 5 5 2-5 2-2 5-2-5-5-2 5-2Z" /></g>
+    </svg>
   );
-}
-
-function Eye({ mood }: { mood: Mood }) {
-  if (mood === "happy") return <span className="h-1 w-2.5 rounded-full bg-ink" />;
-  return <span className="size-2 rounded-full bg-ink" />;
-}
-
-function Mouth({ mood }: { mood: Mood }) {
-  if (mood === "happy") {
-    return <div className="mt-2 h-2 w-6 rounded-b-full border-b-2 border-ink" />;
-  }
-  if (mood === "sad") {
-    return <div className="mt-3 h-2 w-5 rounded-t-full border-t-2 border-ink" />;
-  }
-  if (mood === "think") {
-    return <div className="mt-2.5 size-1.5 rounded-full bg-ink" />;
-  }
-  return <div className="mt-2.5 h-1 w-4 rounded-full bg-ink/80" />;
 }
 
 export function LogoMark({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 32 32" className={cn("size-8", className)} aria-hidden>
-      <rect width="32" height="32" rx="9" className="fill-lantern" />
-      <rect x="13" y="4" width="6" height="3" rx="1.5" className="fill-ink" />
-      <rect x="8" y="8" width="16" height="16" rx="8" className="fill-paper" />
-      <circle cx="12.5" cy="15" r="1.4" className="fill-ink" />
-      <circle cx="19.5" cy="15" r="1.4" className="fill-ink" />
-      <rect x="15" y="24" width="2" height="4" rx="1" className="fill-accent" />
-    </svg>
-  );
+  return <svg viewBox="0 0 40 40" className={cn("size-10", className)} aria-hidden="true">
+    <rect width="40" height="40" rx="13" fill="#285847" />
+    <path d="M20 7v4" stroke="#F0C96D" strokeWidth="2.5" strokeLinecap="round" />
+    <rect x="15" y="9" width="10" height="3" rx="1.5" fill="#F9EAC5" />
+    <rect x="10" y="12" width="20" height="20" rx="10" fill="#F0C96D" />
+    <circle cx="16" cy="21" r="1.5" fill="#294737" /><circle cx="24" cy="21" r="1.5" fill="#294737" />
+    <path d="M18 26q2 2 4 0M20 32v3" fill="none" stroke="#294737" strokeWidth="1.5" strokeLinecap="round" />
+  </svg>;
 }
