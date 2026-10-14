@@ -9,7 +9,7 @@ import { emptyPersist, exportBackup, importBackup, parseSave } from "./save.ts";
 import type { Grade } from "./types.ts";
 
 describe("出题回归", () => {
-  it("18400 道固定种子题中，选择题仅有一个可判对选项", () => {
+  it("所有模块的固定种子题中，选择题仅有一个可判对选项", () => {
     const rng = mulberry32(1013);
     for (const chapter of CHAPTERS) for (let level = 1; level <= 8; level++) {
       for (let i = 0; i < 100; i++) {
@@ -69,7 +69,7 @@ describe("存档迁移与备份", () => {
     const { selectedGrade: _g, dailyByGrade: _d, ...old } = emptyPersist();
     const result = parseSave({ ...old, version: 2, stars: { "warmup:1": 3 }, stats: { answered: 9, correct: 7 } });
     assert.equal(result.selectedGrade, 3);
-    assert.equal(result.version, 3);
+    assert.equal(result.version, 4);
     assert.equal(result.stars["warmup:1"], 3);
     assert.equal(result.stats.correct, 7);
   });

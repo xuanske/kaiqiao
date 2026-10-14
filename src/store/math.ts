@@ -1,3 +1,4 @@
+import { unitById } from "../lib/math/units.ts";
 import { create } from "zustand";
 import { CHAPTERS, DAILY_COUNT, DRILL_COUNT, QUESTIONS_PER_LEVEL, SPRINT_COUNT, SPRINT_SECONDS } from "../lib/math/chapters.ts";
 import { isCorrect, starsFor } from "../lib/math/grade.ts";
@@ -24,6 +25,9 @@ import { SAVE_KEY, SAVE_VERSION, emptyPersist, parseSave, type PersistShape } fr
 type Session = {
   kind: PlayKind;
   chapterId?: string;
+  unitId?: string;
+  assessment?: boolean;
+  advanced?: boolean;
   level?: number;
   questions: Question[];
   index: number;
@@ -60,6 +64,8 @@ type MathState = PersistShape & {
   go: (screen: Screen) => void;
   startLevel: (chapterId: string, level: number) => void;
   startDaily: () => void;
+  startTopic: (chapterId: string, advanced?: boolean) => void;
+  startUnit: (unitId: string, assessment?: boolean) => void;
   startReview: () => void;
   startDuel: () => void;
   startSprint: () => void;
@@ -75,6 +81,7 @@ type MathState = PersistShape & {
 function slicePersist(s: PersistShape): PersistShape {
   return {
     version: SAVE_VERSION,
+    unitStats: s.unitStats,
     selectedGrade: s.selectedGrade,
     dailyByGrade: s.dailyByGrade,
     stars: s.stars,
@@ -126,6 +133,10 @@ function closeSession(s: MathState, session: Session): Partial<MathState> {
   if (session.kind === "daily" && session.logs.length > 0) {
     lastDaily = todayStamp();
     next.dailyByGrade = { ...s.dailyByGrade, [s.selectedGrade]: lastDaily };
+  }
+  if (session.kind === "unit" && session.unitId && session.logs.length) {
+    const previous = s.unitStats[session.unitId];
+    next.unitStats = { ...s.unitStats, [session.unitId]: { completed: (previous?.completed ?? 0) + 1, correct, total: session.logs.length, at: Date.now(), mode: session.assessment ? "check" : "practice" } };
   }
   next = session.logs.length ? touchStreak({ ...next, lastDaily }) : next;
   return {
@@ -213,6 +224,21 @@ export const useMath = create<MathState>((set, get) => ({
       duel: null,
       sprintRemain: 0,
     });
+  },
+  startTopic: (chapterId, advanced = false) => {
+    const chapter = CHAPTERS.find(c => c.id === chapterId && c.grade === get().selectedGrade);
+    if (!chapter) return;
+    const rng = randomRng();
+    const questions = Array.from({length:8},(_,i)=>makeLevelSet(chapterId, (advanced ? 5 : 1) + i%4, 1, rng)[0]!);
+    set({ screen: "play", lastStars: 0, session: newSession("topic", questions, {chapterId,advanced}), duel: null, sprintRemain: 0 });
+  },
+  startUnit: (unitId, assessment = false) => {
+    const unit = unitById(unitId);
+    if (!unit) return;
+    const rng = randomRng();
+    const count = assessment ? 12 : 8;
+    const questions = Array.from({ length: count }, (_, i) => makeLevelSet(unit.chapterId, i % 8 + 1, 1, rng)[0]!);
+    set({ selectedGrade: 3, screen: "play", lastStars: 0, session: newSession("unit", questions, { chapterId: unit.chapterId, unitId, assessment }), duel: null, sprintRemain: 0 });
   },
   startDaily: () => {
     const ids = unlockedChapterIds(get().stars, get().selectedGrade);
@@ -361,7 +387,7 @@ export const useMath = create<MathState>((set, get) => ({
       return;
     }
     if (nextIndex >= session.questions.length) {
-      if (!session.retried) {
+      if (!session.retried && !(session.kind === "unit" && session.assessment)) {
         const missed = session.logs.filter((l) => !l.ok);
         const extras = missed.map((m) => {
           const src = session.questions.find((q) => q.prompt === m.prompt);

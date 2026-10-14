@@ -1,3 +1,4 @@
+import { EXPANDED_CHAPTERS } from "./expanded-bank.ts";
 import type { Chapter } from "./types.ts";
 
 export const LEVELS_PER_CHAPTER = 8;
@@ -25,13 +26,23 @@ export const CHAPTERS: Chapter[] = [
   { id: "frac", name: "分数小数", blurb: "初步认识分数与小数", term: "上·下", grade: 3 },
   { id: "dir", name: "位置方向", blurb: "东南西北，左转右转", term: "下册", grade: 3 },
   { id: "stat", name: "简单统计", blurb: "合计、比较、相差多少", term: "下册", grade: 3 },
-  { id: "g4ops", name: "运算律", blurb: "三位数乘除，提取公因数", term: "上册", grade: 4 },
+  { id: "g4ops", name: "运算律", blurb: "三位数乘除，乘法分配律", term: "上册", grade: 4 },
   { id: "g4dec", name: "小数加减", blurb: "小数点对齐", term: "下册", grade: 4 },
-  { id: "g5frac", name: "分数运算", blurb: "同分母加减，约分", term: "上册", grade: 5 },
+  { id: "g5frac", name: "分数运算", blurb: "分数加减、通分与约分", term: "上册", grade: 5 },
   { id: "g5eq", name: "简易方程", blurb: "求未知数 x", term: "上册", grade: 5 },
-  { id: "g5pct", name: "百分数", blurb: "百分数与小数，求一个数的百分之几", term: "下册", grade: 5 },
+  { id: "g5pct", name: "百分数预习", blurb: "拓展选学：百分数与小数", term: "选学拓展", grade: 5 },
   { id: "g6ratio", name: "比和比例", blurb: "化简比，解比例", term: "上册", grade: 6 },
-  { id: "g6circle", name: "圆的周长", blurb: "π 取 3，半径与直径", term: "下册", grade: 6 },
+  { id: "g6circle", name: "圆的周长与面积", blurb: "π 取 3.14，半径、直径与面积", term: "下册", grade: 6 },
+  { id: "g3measure", name: "长度与换算", blurb: "毫米到千米", term: "知识单元", grade: 3 },
+  { id: "g3mass", name: "克千克吨", blurb: "质量单位与生活应用", term: "知识单元", grade: 3 },
+  { id: "g3clock", name: "读钟与经过时间", blurb: "时分秒换算", term: "知识单元", grade: 3 },
+  { id: "g3calendar", name: "日历探究", blurb: "大小月与平闰年", term: "知识单元", grade: 3 },
+  { id: "g3fraction", name: "分数小实验", blurb: "平均分与同分母加减", term: "知识单元", grade: 3 },
+  { id: "g3decimal", name: "小数与购物", blurb: "元角转换与小数加减", term: "知识单元", grade: 3 },
+  { id: "g3combine", name: "有序思考", blurb: "搭配、重叠与路线", term: "知识单元", grade: 3 },
+  { id: "g3mixed", name: "混合运算", blurb: "顺序、括号与应用", term: "知识单元", grade: 3 },
+  { id: "g3angles", name: "线与角", blurb: "张口大小与线的特征", term: "知识单元", grade: 3 },
+  ...EXPANDED_CHAPTERS,
 ];
 
 export const GRADE_LABEL: Record<number, string> = {

@@ -15,7 +15,7 @@ describe("小学全年级题库", () => {
     }
   });
 
-  it("六年级圆周长 π 取 3", () => {
+  it("六年级圆周长按题目要求 π 取 3.14", () => {
     const rng = mulberry32(7);
     let saw = false;
     for (let i = 0; i < 20; i += 1) {
@@ -23,7 +23,7 @@ describe("小学全年级题库", () => {
       if (q.prompt.includes("半径")) {
         const m = q.prompt.match(/半径 (\d+)/);
         assert.ok(m);
-        assert.equal(q.answer, String(2 * 3 * Number(m![1])));
+        assert.equal(q.answer, String(Math.round(2 * 3.14 * Number(m![1]) * 100) / 100));
         saw = true;
         break;
       }
