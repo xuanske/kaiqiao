@@ -1,3 +1,5 @@
+import { Learning } from "./learning";
+import { unitById } from "@/lib/math/units";
 import { useEffect, useState, type ReactNode } from "react";
 import { ArrowLeft, ArrowRight, CheckCircle2, ChevronLeft, Lightbulb, Star, Timer, Volume2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -29,6 +31,7 @@ export function Game() {
   useEffect(() => () => hushSpeak(), []);
   return <AppShell screen={screen}>
     {screen === "home" ? <Home /> : null}
+    {screen === "learn" ? <Learning /> : null}
     {screen === "map" ? <Map /> : null}
     {screen === "play" ? <Play /> : null}
     {screen === "duel" ? <Duel /> : null}
@@ -43,6 +46,7 @@ function Back({ onClick, label }: { onClick: () => void; label: string }) {
 }
 
 function playTitle(kind: string, chapterId?: string, level?: number, skill?: string): string {
+  if (kind === "topic") return `${chapterById(chapterId ?? "warmup").name} · 专项练习`;
   if (kind === "daily") return "每日一练";
   if (kind === "review") return "错题回炉";
   if (kind === "sprint") return "本年级限时练习";
@@ -140,7 +144,7 @@ function Play() {
   return (
     <AskShell
       mood={mood}
-      title={`${session.retried ? "巩固加练 · " : ""}${playTitle(session.kind, session.chapterId, session.level, session.skill)}`}
+      title={`${session.retried ? "巩固加练 · " : ""}${session.kind === "unit" ? `${unitById(session.unitId ?? "")?.title ?? "单元练习"} · ${session.assessment ? "自测" : "练习"}` : playTitle(session.kind, session.chapterId, session.level, session.skill)}`}
       onBack={() => {
         if (window.confirm("结束本轮？已提交的答案会保留，未完成的练习不计通关或打卡。")) go("home");
       }}
@@ -328,6 +332,8 @@ function Result() {
   const accuracy = total ? Math.round(correct / total * 100) : null;
   const retry = () => {
     if (session.kind === "campaign" && session.chapterId && session.level) return lastStars > 0 ? startLevel(next.chapterId, next.level) : startLevel(session.chapterId, session.level);
+    if (session.kind === "topic" && session.chapterId) return useMath.getState().startTopic(session.chapterId, session.advanced);
+    if (session.kind === "unit" && session.unitId) return useMath.getState().startUnit(session.unitId, session.assessment);
     if (session.kind === "daily") return startDaily();
     if (session.kind === "drill") return startDrill(session.skill);
     if (sprintEnd) return startSprint();
@@ -343,6 +349,7 @@ function Result() {
       <p>{duelEnd ? `你答对 ${you} 题 · 窍窍（电脑）答对 ${npc} 题` : sprintEnd ? `本轮答对 ${correct} 题 · 最好成绩 ${sprintBest} 题` : correct === total && total > 0 ? "这一组，全都想明白了！" : "把不熟悉的题再想一遍，就会更稳。"}</p>
       {session.kind === "campaign" ? <div className="result-stars" aria-label={`本轮获得 ${lastStars} 颗星`} >{[1, 2, 3].map((n) => <Star key={n} size={34} className={cn(n <= lastStars && "is-earned")} />)}</div> : null}
       <div className="result-metrics"><Metric label="答对 / 已答" value={`${correct} / ${total}`} /><Metric label="本轮正确率" value={accuracy === null ? '—' : `${accuracy}%`} /><Metric label="最高连对" value={`${session.maxCombo} 题`} /></div>
+      {session.kind === "unit" ? <p className="unit-result-note">这次记录已写入学情。看看家长建议，再挑一个需要巩固的知识点。</p> : null}
       <div className="result-actions"><Button size="lg" onClick={retry}>{session.kind === "campaign" ? lastStars > 0 ? "继续闯关" : "再练本关" : session.kind === "review" ? "回到错题本" : "再练一组"}<ArrowRight /></Button><Button variant="outline" size="lg" onClick={() => go("report")}>看看学习小结</Button></div>
       <button type="button" className="back-button mx-auto mt-4" onClick={() => go("home")}><ArrowLeft size={15} />今天先练到这里</button>
     </section>

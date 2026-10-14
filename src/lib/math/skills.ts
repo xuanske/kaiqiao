@@ -22,9 +22,12 @@ export type SkillId =
   | "eq"
   | "pct"
   | "ratio"
-  | "circle";
+  | "number" | "money" | "shape" | "factor" | "volume" | "surface" | "rate" | "scale"
+  | "circle" | "measure" | "mass" | "combine" | "mixed" | "geometry";
 
 export const SKILL_LABEL: Record<SkillId, string> = {
+  number: "数与数位", money: "元角分", shape: "图形与规律", factor: "因数与倍数", volume: "体积与容积", surface: "表面积", rate: "速度与路程", scale: "比例尺",
+  measure: "长度换算", mass: "质量换算", combine: "有序思考", mixed: "混合运算", geometry: "线与角",
   add: "加法",
   "add-carry": "进位加法",
   sub: "减法",
@@ -45,34 +48,38 @@ export const SKILL_LABEL: Record<SkillId, string> = {
   eq: "简易方程",
   pct: "百分数",
   ratio: "比和比例",
-  circle: "圆的周长",
+  circle: "圆",
 };
 
 export const SKILL_HINT: Record<SkillId, string> = {
+  number: "先确认数位，再比较或换算。", money: "1 元 = 10 角，1 角 = 10 分；先统一单位。", shape: "看清图形特征或排列顺序，再判断。", factor: "因数是能整除这个数的数；公因数与公倍数不要混淆。", volume: "先确认立体形状，分清体积和容积单位。", surface: "求各个面的面积之和，看清是否只求侧面。", rate: "路程 = 速度 × 时间，先统一单位。", scale: "图上距离与实际距离先统一单位，再按比例尺计算。",
+  measure: "先统一长度单位，再计算。", mass: "1 吨 = 1000 千克，1 千克 = 1000 克。", combine: "固定一项有序列举，重叠部分不重复计算。", mixed: "有括号先算括号，先乘除后加减，同级从左往右。", geometry: "角的大小看张口，不看边的长短。",
   add: "对齐数位，从个位加起。",
   "add-carry": "满十向前进 1，进上来的 1 不能漏。",
   sub: "对齐数位，从个位减起。",
   "sub-borrow": "不够减就向前借 1，借走的那一位少 1。",
   times: "用口诀，不要把加减混进去。",
   bei: "几倍就是乘；问「多多少」要再减一次。",
-  mul: "先乘个位，再乘十位，最后加起来。",
+  mul: "按数位分别相乘，每个数位都要乘到，最后合起来。",
   div: "想乘法口诀：几乘除数最接近被除数。",
   "div-remain": "余数必须比除数小。写成 商余余数。",
   peri: "长方形周长 =（长 + 宽）× 2，正方形 × 4。",
-  area: "面积是长 × 宽，单位是平方。",
+  area: "先确认图形，再选面积公式；面积用平方单位。",
   time: "1 时 = 60 分。跨天先算到午夜。",
   calendar: "平年 365，闰年二月 29。整百年份还要能被 400 整除。",
   frac: "平均分成几份，每份就是几分之一。",
-  dec: "小数点对齐再加减。1 元 = 10 角。",
+  dec: "加减要对齐小数点；乘法看小数位数；除法先把除数化成整数。",
   dir: "面朝一个方向，右转顺时针一格。",
   stat: "一共用加法，相差用减法。",
-  eq: "把已知数移到另一边，未知数单独留一边。",
+  eq: "等式两边同时加减同一个数，或同时乘除同一个非零数，等式仍成立。",
   pct: "百分数就是分母是 100 的分数。",
-  ratio: "比的前项后项同乘同除一个数，比值不变。",
-  circle: "周长 = π × 直径。这里 π 取 3。",
+  ratio: "比的前项后项同时乘或除以同一个非零数，比值不变。",
+  circle: "周长 = π × 直径；面积 = π × 半径 × 半径。π 按题目要求取值。",
 };
 
 export const SKILL_DRILL: Record<SkillId, { chapterId: string; level: number }> = {
+  number: {chapterId:"g1number",level:3}, money: {chapterId:"g1money",level:3}, shape: {chapterId:"g1shape",level:3}, factor: {chapterId:"g5factor",level:3}, volume: {chapterId:"g5volume",level:3}, surface: {chapterId:"g5volume",level:4}, rate: {chapterId:"g4stats",level:3}, scale: {chapterId:"g6scale",level:3},
+  measure: {chapterId:"g3measure",level:3}, mass:{chapterId:"g3mass",level:3}, combine:{chapterId:"g3combine",level:3}, mixed:{chapterId:"g3mixed",level:3}, geometry:{chapterId:"g3angles",level:3},
   add: { chapterId: "warmup", level: 2 },
   "add-carry": { chapterId: "wan", level: 5 },
   sub: { chapterId: "warmup", level: 2 },

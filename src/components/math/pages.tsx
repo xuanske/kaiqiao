@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { UnitProgress } from "./learning";
 import { ArrowRight, BookOpen, Check, ChevronRight, Download, Flame, Lightbulb, LockKeyhole, Map as MapIcon, RotateCcw, Sparkles, Star, Target, Timer, Trophy, Zap, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CHAPTERS, GRADE_LABEL, LEVELS_PER_CHAPTER, chapterById, chaptersOfGrade } from "@/lib/math/chapters";
@@ -22,6 +24,7 @@ export function Home() {
   const tap = (action: () => void) => { unlockAudio(); if (!s.muted) playTap(); action(); };
   return <div className="page-enter">
     <PageHeading eyebrow="一点练习 · 一点进步" title="今天，也开窍一点。" description="先想一想，再动手。每一次认真练习，都算数。" />
+    <section className="learning-entry"><span className="mode-icon"><Lightbulb size={24}/></span><div><span className="eyebrow">{s.selectedGrade===3?"原创理解实验室":"本年级题库已更新"}</span><h2>先想明白，再练到会。</h2><p>{s.selectedGrade===3?"三年级 18 个知识单元，配分步讲解和互动实验。":`${GRADE_LABEL[s.selectedGrade]} ${chaptersOfGrade(s.selectedGrade).length} 个题库模块，按知识点自由练习。`}</p></div><Button onClick={() => s.go(s.selectedGrade===3?"learn":"map")}>{s.selectedGrade===3?"去理解":"选知识点"}<ArrowRight/></Button></section>
     <div className="home-feature-grid">
       <section className="daily-card" aria-labelledby="daily-title">
         <span className="hero-kicker"><span className="status-dot" />{dailyDone ? "今天已完成" : "今天的小目标"}</span>
@@ -55,9 +58,21 @@ function ModeCard({ icon: Icon, tone, title, description, onClick }: { icon: Luc
 
 export function Map() {
   const s = useMath();
+  const [mode,setMode]=useState<"topic"|"journey">("topic");
+  const [advanced,setAdvanced]=useState(false);
+  const [query,setQuery]=useState("");
+  const chapters=chaptersOfGrade(s.selectedGrade).filter(c=>`${c.name}${c.blurb}`.includes(query.trim()));
   const next = nextCampaign(s.stars, s.selectedGrade);
   return <div className="page-enter">
-    <PageHeading eyebrow={`${GRADE_LABEL[s.selectedGrade]} · 我的学习路线`} title="闯关地图" description="每关 8 题，每章过 3 关后解锁下一章。慢慢来，一关一关走。" action={<span className="star-total"><Star size={19} />{chaptersOfGrade(s.selectedGrade).reduce((sum, c) => sum + chapterStarSum(s.stars, c.id), 0)} 星</span>} />
+    <PageHeading eyebrow={`${GRADE_LABEL[s.selectedGrade]} · 我的学习路线`} title="题库与闯关" description="先选年级，再选今天想练的知识点。每组 8 题，答错后会安排同类巩固。" action={<span className="star-total"><Star size={19} />{chaptersOfGrade(s.selectedGrade).reduce((sum, c) => sum + chapterStarSum(s.stars, c.id), 0)} 星</span>} />
+    <div className="bank-toolbar"><div className="theme-tabs" aria-label="练习方式"><button type="button" aria-pressed={mode==="topic"} onClick={()=>setMode("topic")}>按知识点练</button><button type="button" aria-pressed={mode==="journey"} onClick={()=>setMode("journey")}>闯关路线</button></div><span className="soft-badge">{GRADE_LABEL[s.selectedGrade]} · {chaptersOfGrade(s.selectedGrade).length} 个模块</span></div>
+    {mode==="topic"?<>
+      <div className="bank-filters"><label className="learning-search"><input aria-label="搜索本年级题库" value={query} onChange={e=>setQuery(e.target.value)} placeholder="搜知识点或题型…"/></label><div className="theme-tabs" aria-label="练习层次"><button type="button" aria-pressed={!advanced} onClick={()=>setAdvanced(false)}>基础一组</button><button type="button" aria-pressed={advanced} onClick={()=>setAdvanced(true)}>进阶一组</button></div></div>
+      <div className="unit-grid">{chapters.map((chapter,index)=><button type="button" className="unit-card" key={chapter.id} onClick={()=>s.startTopic(chapter.id,advanced)}><div><span className="unit-number">{String(index+1).padStart(2,"0")}</span><small>{chapter.term==="选学拓展"?"选学拓展":"原创变式练习"}</small></div><h2>{chapter.name}</h2><p>{chapter.blurb}</p><footer><span>{advanced?"进阶":"基础"} · 练 8 题</span><ArrowRight size={17}/></footer></button>)}</div>
+      {!chapters.length?<p className="gentle-note">这个年级暂未找到对应题型，换个关键词试试。</p>:null}
+      <p className="gentle-note">按知识点练不受闯关解锁限制，答题会记入学情，但不获得闯关星星。这里按知识点选学，不代表完整教材同步。</p>
+    </>:<>
+    <p className="gentle-note">每章通过 3 关后解锁下一章；旧版星星与进度继续保留。</p>
     <ol className="chapter-grid">{chaptersOfGrade(s.selectedGrade).map((chapter, index) => {
       const open = isChapterUnlocked(s.stars, chapter.id);
       const done = clearedLevels(s.stars, chapter.id);
@@ -75,7 +90,7 @@ export function Map() {
         })}</div>
         <p className="chapter-foot">{open ? `${chapterStarSum(s.stars, chapter.id)} / ${LEVELS_PER_CHAPTER * 3} 颗星星` : "上一章通过 3 关后开启"}</p>
       </li>;
-    })}</ol>
+    })}</ol></>}
   </div>;
 }
 
@@ -125,7 +140,7 @@ export function Report() {
         const done = chapters.reduce((sum, c) => sum + clearedLevels(s.stars, c.id), 0);
         return <details key={grade} open={grade === s.selectedGrade}><summary><span>{GRADE_LABEL[grade]}</span><small>{done}/{chapters.length * LEVELS_PER_CHAPTER} 关</small><ChevronRight size={16} /></summary><ul>{chapters.map((c) => <li key={c.id}><span>{c.name}</span><span>{clearedLevels(s.stars, c.id)}/{LEVELS_PER_CHAPTER} <Star size={12} />{chapterStarSum(s.stars, c.id)}</span></li>)}</ul></details>;
       })}</div></section>
-      <Backup />
+      <UnitProgress /><Backup />
     </div></div>
     <p className="gentle-note">已提交的答案会计入统计；未完成的练习不计通关和连续练习。</p>
   </div>;

@@ -52,6 +52,6 @@ export type SkillStat = {
   sumMs: number;
 };
 
-export type PlayKind = "campaign" | "daily" | "review" | "duel" | "sprint" | "drill";
+export type PlayKind = "topic" | "unit" | "campaign" | "daily" | "review" | "duel" | "sprint" | "drill";
 
-export type Screen = "home" | "map" | "play" | "result" | "review" | "duel" | "report";
+export type Screen = "learn" | "home" | "map" | "play" | "result" | "review" | "duel" | "report";

@@ -1,3 +1,5 @@
+import { EXPANDED_FACTORY } from "./expanded-bank.ts";
+import { LEARNING_FACTORY } from "./learning-bank.ts";
 import { CHAPTERS } from "./chapters.ts";
 import { GRADE_FACTORY } from "./grades.ts";
 import { inferSkill } from "./skills.ts";
@@ -591,6 +593,8 @@ const FACTORY: Record<string, (level: number, rng: Rng) => Question> = {
   dir: dirQ,
   stat: statQ,
   ...GRADE_FACTORY,
+  ...LEARNING_FACTORY,
+  ...EXPANDED_FACTORY,
 };
 
 export function tagQuestion(q: Question): Question {

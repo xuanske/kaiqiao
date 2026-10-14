@@ -9,7 +9,8 @@ import { LogoMark, Mascot } from "./mascot";
 
 const NAV: { screen: Screen; label: string; icon: LucideIcon }[] = [
   { screen: "home", label: "练习", icon: Home },
-  { screen: "map", label: "闯关", icon: Map },
+  { screen: "learn", label: "理解", icon: BookOpen },
+  { screen: "map", label: "题库", icon: Map },
   { screen: "review", label: "错题本", icon: BookOpen },
   { screen: "report", label: "学情", icon: BarChart3 },
 ];

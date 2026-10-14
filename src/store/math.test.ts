@@ -129,3 +129,46 @@ describe("存储故障保护", () => {
     assert.equal(state().selectedGrade, 6);
   });
 });
+
+describe("知识单元练习与自测", () => {
+  it("从其他年级进入会切到三年级，自测固定12题且只结算一次", () => {
+    state().setGrade(1);state().startUnit('u-frac',true);
+    assert.equal(state().selectedGrade,3);
+    assert.equal(state().session!.questions.length,12);
+    answer(false);state().advance();finish();
+    const result=state().unitStats['u-frac'];
+    assert.equal(result.total,12);assert.equal(result.correct,11);assert.equal(result.mode,'check');assert.equal(result.completed,1);
+    state().advance();assert.equal(state().unitStats['u-frac'].completed,1);
+    state().hydrate();assert.deepEqual(state().unitStats['u-frac'],result);
+  });
+  it("练习答错后会加练，单元成绩保留加练后的真实题数", () => {
+    state().startUnit('u-clock');answer(false);state().advance();finish();
+    assert.equal(state().unitStats['u-clock'].total,9);
+    assert.equal(state().unitStats['u-clock'].correct,8);
+    assert.equal(state().unitStats['u-clock'].mode,'practice');
+  });
+  it("中途退出不虚报单元完成，未知单元不启动", () => {
+    state().startUnit('missing');assert.equal(state().session,null);
+    state().startUnit('u-frac');answer(false);state().go('learn');
+    assert.deepEqual(state().unitStats,{});assert.equal(state().stats.answered,1);assert.equal(state().wrong.length,1);
+  });
+});
+
+describe("自由知识点练习",()=>{
+  it("各年级新模块可以直接练8题，但不越级出题或赠送闯关星星",()=>{
+    for(const [grade,id] of [[1,'g1money'],[2,'g2remainder'],[4,'g4geometry'],[5,'g5volume'],[6,'g6solid']] as const) {
+      state().setGrade(grade);state().startTopic(id,true);
+      assert.equal(state().session!.questions.length,8);
+      assert.ok(state().session!.questions.every(q=>q.chapterId===id));
+      assert.equal(state().session!.advanced,true);finish();assert.deepEqual(state().stars,{});
+      assert.equal(state().screen,'result');
+    }
+  });
+  it("跨年级与未知专项无法启动，中途退出保留错题而不虚报完成",()=>{
+    state().setGrade(1);state().startTopic('g6solid');assert.equal(state().session,null);
+    state().startTopic('missing');assert.equal(state().session,null);
+    state().startTopic('g1money');answer(false);state().go('map');
+    assert.equal(state().wrong.length,1);assert.equal(state().streak,0);assert.equal(state().xp,0);
+    state().hydrate();assert.equal(state().wrong[0].chapterId,'g1money');
+  });
+});

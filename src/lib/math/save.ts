@@ -1,11 +1,14 @@
+import { unitById } from "./units.ts";
 import { CHAPTERS } from "./chapters.ts";
 import { isSkillId } from "./skills.ts";
 import type { Grade, SkillStat, WrongItem } from "./types.ts";
 
 export const SAVE_KEY = "kaiqiao.save.v1";
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 export const MAX_BACKUP_BYTES = 1_000_000;
+export type UnitResult = { completed: number; correct: number; total: number; at: number; mode: "practice" | "check" };
 export type PersistShape = {
+  unitStats: Record<string, UnitResult>;
   version: number;
   selectedGrade: Grade;
   dailyByGrade: Record<string, string>;
@@ -22,7 +25,7 @@ export type PersistShape = {
 };
 
 export const emptyPersist = (): PersistShape => ({
-  version: SAVE_VERSION, selectedGrade: 3, dailyByGrade: {}, stars: {}, xp: 0,
+  unitStats: {}, version: SAVE_VERSION, selectedGrade: 3, dailyByGrade: {}, stars: {}, xp: 0,
   streak: 0, lastPlayDate: "", lastDaily: "", wrong: [],
   stats: { answered: 0, correct: 0 }, muted: false, skillStats: {}, sprintBest: 0,
 });
@@ -93,6 +96,13 @@ export function parseSave(value: unknown): PersistShape {
     for (const [grade, date] of Object.entries(value.dailyByGrade)) {
       if (!/^[1-6]$/.test(grade) || !stamp(date)) return invalid();
       out.dailyByGrade[grade] = date;
+    }
+  }
+  if (value.unitStats !== undefined) {
+    if (!record(value.unitStats)) return invalid();
+    for (const [id, result] of Object.entries(value.unitStats)) {
+      if (!unitById(id) || !record(result) || !count(result.completed) || result.completed < 1 || !count(result.total, 100) || result.total < 1 || !count(result.correct, result.total) || !count(result.at) || !["practice", "check"].includes(String(result.mode))) return invalid();
+      out.unitStats[id] = { completed: result.completed, correct: result.correct, total: result.total, at: result.at, mode: result.mode as "practice" | "check" };
     }
   }
   return out;
